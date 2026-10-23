@@ -39,8 +39,11 @@ def _rows(transaksi: list[Peminjaman]) -> list[list[str | int]]:
         [
             item.kode_peminjaman,
             item.user_id,
-            item.barang_id,
-            item.jumlah,
+            "; ".join(
+                f"{detail.barang.kode_barang} / {detail.barang.nama_barang} "
+                f"({detail.jumlah} unit)"
+                for detail in item.items
+            ),
             item.tanggal_pinjam.isoformat(sep=" "),
             item.tanggal_kembali.isoformat(sep=" ") if item.tanggal_kembali else "",
             item.status,
@@ -95,8 +98,7 @@ def export_pdf(
             [
                 "Kode",
                 "User ID",
-                "Barang ID",
-                "Jumlah",
+                "Barang (Jumlah)",
                 "Tanggal Pinjam",
                 "Tanggal Kembali",
                 "Status",
@@ -140,8 +142,7 @@ def export_excel(
         [
             "Kode",
             "User ID",
-            "Barang ID",
-            "Jumlah",
+            "Barang (Jumlah)",
             "Tanggal Pinjam",
             "Tanggal Kembali",
             "Status",

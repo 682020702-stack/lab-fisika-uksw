@@ -50,33 +50,68 @@
   function setupLoanRequestForm(onSuccess) {
     const modal = document.getElementById("loan-create-modal");
     const form = document.getElementById("loan-create-form");
-    const itemSelect = document.getElementById("loan-item-select");
-    const quantityInput = document.getElementById("loan-quantity");
+    const itemsContainer = document.getElementById("loan-items-container");
     const submitButton = document.getElementById("submit-loan");
+    const addItemButton = document.getElementById("add-loan-item");
     let availableItems = [];
-    let lockedItemId = null;
 
     const setItems = (items) => {
-      const selectedId = lockedItemId ?? (Number(itemSelect.value) || null);
       availableItems = items.filter((item) => item.stok > 0);
-      itemSelect.innerHTML = availableItems.length
-        ? `<option value="">Pilih barang</option>${availableItems.map((item) => `<option value="${item.id}">${escapeHTML(item.nama_barang)} · stok ${item.stok}</option>`).join("")}`
-        : '<option value="">Tidak ada barang tersedia</option>';
-      itemSelect.dataset.items = JSON.stringify(availableItems.map(({ id, stok }) => ({ id, stok })));
-      itemSelect.value = selectedId && availableItems.some((item) => item.id === selectedId) ? String(selectedId) : "";
-      itemSelect.disabled = Boolean(lockedItemId) || availableItems.length === 0;
-      updateStockLimit();
+      refreshItemRows();
     };
 
-    const updateStockLimit = () => {
-      const selected = availableItems.find((item) => String(item.id) === itemSelect.value);
-      quantityInput.max = selected ? String(selected.stok) : "";
-      quantityInput.value = selected
-        ? String(Math.min(Number(quantityInput.value) || 1, selected.stok))
-        : "";
-      document.getElementById("loan-stock-hint").textContent = selected
-        ? `Stok tersedia: ${selected.stok}`
-        : "Pilih barang yang tersedia.";
+    const refreshItemRows = () => {
+      const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
+      rows.forEach((row) => {
+        const select = row.querySelector("[data-loan-item]");
+        const quantity = row.querySelector("[data-loan-quantity]");
+        const selectedId = Number(select.value) || null;
+        const usedByOtherRows = new Set(
+          rows
+            .filter((otherRow) => otherRow !== row)
+            .map((otherRow) => Number(otherRow.querySelector("[data-loan-item]").value))
+            .filter(Boolean),
+        );
+        const options = availableItems.filter(
+          (item) => item.id === selectedId || !usedByOtherRows.has(item.id),
+        );
+        select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
+          `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
+        ).join("")}`;
+        select.value = selectedId && options.some((item) => item.id === selectedId)
+          ? String(selectedId)
+          : "";
+        const selected = availableItems.find((item) => String(item.id) === select.value);
+        quantity.max = selected ? String(selected.stok) : "";
+        quantity.value = selected
+          ? String(Math.min(Number(quantity.value) || 1, selected.stok))
+          : "";
+        row.querySelector("[data-item-stock-hint]").textContent = selected
+          ? `Stok tersedia: ${selected.stok}`
+          : "Pilih barang yang tersedia.";
+        row.querySelector("[data-remove-loan-item]").disabled = rows.length === 1;
+      });
+      addItemButton.disabled = availableItems.length <= rows.length;
+    };
+
+    const addItemRow = (itemId = null) => {
+      const row = document.createElement("div");
+      row.className = "loan-item-row";
+      row.innerHTML = `
+        <div class="form-field"><label class="field-label">Barang</label><select class="input-control" data-loan-item required><option value="">Pilih barang</option></select><div class="field-hint" data-item-stock-hint>Pilih barang yang tersedia.</div></div>
+        <div class="form-field"><label class="field-label">Jumlah</label><input class="input-control" data-loan-quantity type="number" min="1" required></div>
+        <button class="btn btn-danger" data-remove-loan-item type="button" aria-label="Hapus barang">Hapus</button>
+      `;
+      itemsContainer.append(row);
+      const select = row.querySelector("[data-loan-item]");
+      select.value = itemId ? String(itemId) : "";
+      select.addEventListener("change", refreshItemRows);
+      row.querySelector("[data-loan-quantity]").addEventListener("input", refreshItemRows);
+      row.querySelector("[data-remove-loan-item]").addEventListener("click", () => {
+        row.remove();
+        refreshItemRows();
+      });
+      refreshItemRows();
     };
 
     const setDefaultLoanDates = () => {
@@ -90,30 +125,36 @@
 
     const open = (itemId = null) => {
       form.reset();
-      lockedItemId = itemId;
+      itemsContainer.replaceChildren();
       setDefaultLoanDates();
-      setItems(availableItems);
-      if (itemId !== null && itemSelect.value !== String(itemId)) {
-        lockedItemId = null;
-        itemSelect.disabled = false;
+      if (itemId !== null && !availableItems.some((item) => item.id === itemId)) {
         showFailure(new Error("Barang sudah tidak tersedia. Muat ulang data barang dan coba lagi."));
         return;
       }
-      itemSelect.disabled = itemId !== null || availableItems.length === 0;
-      updateStockLimit();
+      if (!availableItems.length) {
+        showFailure(new Error("Tidak ada barang yang tersedia untuk dipinjam."));
+        return;
+      }
+      addItemRow(itemId);
       modal.showModal();
     };
 
-    itemSelect.addEventListener("change", updateStockLimit);
+    addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const barangId = Number(itemSelect.value);
-      const jumlah = Number(quantityInput.value);
-      const selected = availableItems.find((item) => String(item.id) === itemSelect.value);
-      if (!selected || jumlah < 1 || jumlah > selected.stok) {
-        showFailure(new Error("Jumlah melebihi stok yang tersedia."));
+      const items = [...itemsContainer.querySelectorAll(".loan-item-row")].map((row) => {
+        const barangId = Number(row.querySelector("[data-loan-item]").value);
+        const jumlah = Number(row.querySelector("[data-loan-quantity]").value);
+        return { barang_id: barangId, jumlah };
+      });
+      const invalidItem = items.some((requestedItem) => {
+        const item = availableItems.find((available) => available.id === requestedItem.barang_id);
+        return !item || requestedItem.jumlah < 1 || requestedItem.jumlah > item.stok;
+      });
+      if (invalidItem || new Set(items.map((item) => item.barang_id)).size !== items.length) {
+        showFailure(new Error("Pilih barang yang berbeda dan jumlah yang tidak melebihi stok."));
         return;
       }
       const tanggalPinjam = document.getElementById("loan-date").value;
@@ -128,16 +169,15 @@
         const createdLoan = await apiFetch("/peminjaman", {
           method: "POST",
           body: {
-            barang_id: barangId,
-            jumlah,
+            items,
             tanggal_pinjam: `${tanggalPinjam}T00:00:00`,
-            tanggal_kembali: `${tanggalKembali}T00:00:00`,
+            tanggal_kembali_rencana: `${tanggalKembali}T00:00:00`,
             keterangan: document.getElementById("loan-note").value.trim() || null,
           },
         });
         modal.close();
         form.reset();
-        lockedItemId = null;
+        itemsContainer.replaceChildren();
         await onSuccess();
         window.showToast(`Pengajuan peminjaman berhasil dikirim dengan kode ${createdLoan.kode_peminjaman}.`);
       } catch (error) {
@@ -252,12 +292,28 @@
     addMobileCardLabels(document.getElementById("items-body"));
   }
 
+  async function loadItemsSafely(selectedCategoryId = null) {
+    try {
+      await loadItems(selectedCategoryId);
+    } catch (error) {
+      const itemsBody = document.getElementById("items-body");
+      if (itemsBody) {
+        itemsBody.innerHTML = emptyRow(
+          8,
+          "Periksa koneksi dan akses akun, lalu coba muat ulang halaman.",
+          "Inventaris gagal dimuat",
+        );
+      }
+      throw error;
+    }
+  }
+
   async function exportLoanReceipt(button) {
     const label = button.textContent;
     button.disabled = true;
     button.textContent = "Menyiapkan PDF…";
     try {
-      const blob = await apiFetch(`/peminjaman/${encodeURIComponent(button.dataset.loanReceipt)}/bukti`, { responseType: "blob" });
+      const blob = await apiFetch(`/peminjaman/${encodeURIComponent(button.dataset.loanReceipt)}/struk`, { responseType: "blob" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const code = String(button.dataset.loanCode || button.dataset.loanReceipt).replace(/[^A-Za-z0-9_-]/g, "_");
@@ -286,7 +342,12 @@
     const itemNames = new Map(items.map((item) => [item.id, item.nama_barang]));
     window.loanPageState = { currentUser, isAdmin, userNames, itemNames };
     const createButton = document.getElementById("open-loan-modal");
-    if (createButton) createButton.classList.remove("hidden");
+    if (createButton) {
+      createButton.classList.toggle(
+        "hidden",
+        currentUser.role?.toLowerCase() !== "user",
+      );
+    }
 
     loanRequestForm?.setItems(items);
 
@@ -316,11 +377,23 @@
         actions.push(`<button class="btn btn-return" type="button" data-loan-action="return" data-loan-id="${loan.id}">Proses Pengembalian</button>`);
       }
       actions.push(`<button class="btn btn-quiet" type="button" data-loan-detail="${loan.id}">Lihat Detail</button>`);
-      actions.push(`<button class="btn btn-quiet" type="button" data-loan-receipt="${loan.id}" data-loan-code="${escapeHTML(loan.kode_peminjaman)}" aria-label="Export bukti PDF ${escapeHTML(loan.kode_peminjaman)}">Export Bukti PDF</button>`);
+      if (loan.status === "Disetujui") {
+        actions.push(`<button class="btn btn-quiet" type="button" data-loan-receipt="${loan.id}" data-loan-code="${escapeHTML(loan.kode_peminjaman)}" aria-label="Cetak struk ${escapeHTML(loan.kode_peminjaman)}">Cetak Struk PDF</button>`);
+      }
       const borrowerName = userNames.get(loan.user_id) || (isAdmin ? `Pengguna #${loan.user_id}` : currentUser.nama_lengkap);
+      const loanItems = loan.items || [];
+      const itemNamesInLoan = loanItems.map((detail) =>
+        itemNames.get(detail.barang_id) || detail.barang?.nama_barang || `Barang #${detail.barang_id}`,
+      );
+      const itemSummary = itemNamesInLoan.length > 1
+        ? `${itemNamesInLoan.length} Barang (${itemNamesInLoan.join(", ")})`
+        : itemNamesInLoan[0]
+          ? `${itemNamesInLoan[0]} × ${loanItems[0].jumlah}`
+          : "—";
+      const totalQuantity = loanItems.reduce((total, detail) => total + detail.jumlah, 0);
       const lateDays = loan.status === "Disetujui" ? lateDaysFor(loan.tanggal_kembali) : 0;
       const lateTag = lateDays ? `<span class="late-pill">Terlambat ${lateDays} hari</span>` : "";
-      return `<tr><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemNames.get(loan.barang_id) || `Barang #${loan.barang_id}`)}</td><td>${loan.jumlah}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`;
+      return `<tr><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`;
     }).join("") : emptyRow(8, "Belum ada transaksi pada filter ini.");
     addMobileCardLabels(document.getElementById("loans-body"));
   }
@@ -337,8 +410,8 @@
     const rows = await apiFetch(`/laporan/transaksi${suffix ? `?${suffix}` : ""}`);
     document.getElementById("report-count").textContent = `${rows.length} transaksi`;
     document.getElementById("reports-body").innerHTML = rows.length ? rows.map((row) => `
-      <tr><td class="font-semibold">${escapeHTML(row.kode_peminjaman)}</td><td>${row.user_id}</td><td>${row.barang_id}</td><td>${row.jumlah}</td><td class="whitespace-nowrap">${dateText(row.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(row.tanggal_kembali)}</td><td>${statusTag(row.status)}</td></tr>
-    `).join("") : emptyRow(7, "Tidak ada transaksi pada rentang tanggal ini.");
+      <tr><td class="font-semibold">${escapeHTML(row.kode_peminjaman)}</td><td>${row.user_id}</td><td>${escapeHTML((row.items || []).map((detail) => `${detail.barang.kode_barang} / ${detail.barang.nama_barang} × ${detail.jumlah}`).join(", "))}</td><td class="whitespace-nowrap">${dateText(row.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(row.tanggal_kembali)}</td><td>${statusTag(row.status)}</td></tr>
+    `).join("") : emptyRow(6, "Tidak ada transaksi pada rentang tanggal ini.");
     addMobileCardLabels(document.getElementById("reports-body"));
   }
   async function exportReport(kind) {
@@ -512,7 +585,7 @@
       const form = document.getElementById("item-form");
       const excelFileInput = document.getElementById("items-excel-file");
       const uploadExcelButton = document.getElementById("upload-excel-button");
-      itemLoanRequestForm = setupLoanRequestForm(() => loadItems());
+      itemLoanRequestForm = setupLoanRequestForm(() => loadItemsSafely());
       const resetItemForm = () => {
         editingItemId = null;
         form.reset();
@@ -531,8 +604,8 @@
         }
       }));
       if (location.hash === "#new-item" && api.getUser()?.role?.toLowerCase() === "admin") { panel.classList.remove("hidden"); panel.scrollIntoView({ behavior: "smooth" }); }
-      document.getElementById("item-search").addEventListener("input", () => loadItems().catch(showFailure));
-      document.getElementById("category-filter").addEventListener("change", () => loadItems().catch(showFailure));
+      document.getElementById("item-search").addEventListener("input", () => loadItemsSafely().catch(showFailure));
+      document.getElementById("category-filter").addEventListener("change", () => loadItemsSafely().catch(showFailure));
       uploadExcelButton.addEventListener("click", () => {
         if (api.getUser()?.role?.toLowerCase() === "admin") excelFileInput.click();
       });
@@ -552,7 +625,7 @@
             method: "POST",
             body: formData,
           });
-          await loadItems();
+          await loadItemsSafely();
           const resultPanel = document.getElementById("excel-upload-result");
           const resultSummary = document.getElementById("excel-upload-summary");
           const errorList = document.getElementById("excel-upload-errors");
@@ -619,7 +692,7 @@
           categoryModal.close();
           document.getElementById("category-modal-title").textContent = "Kategori Baru";
           document.querySelector("#category-form button[type='submit']").textContent = "Simpan";
-          await loadItems(wasEditing ? null : category.id);
+          await loadItemsSafely(wasEditing ? null : category.id);
           window.showToast(wasEditing ? "Kategori berhasil diperbarui." : "Kategori berhasil ditambahkan.");
         } catch (error) { showFailure(error); }
       });
@@ -642,7 +715,7 @@
         try {
           await apiFetch(`/kategori/${button.dataset.deleteCategory}`, { method: "DELETE" });
           window.showToast("Kategori berhasil dihapus.");
-          await loadItems();
+          await loadItemsSafely();
         } catch (error) { showFailure(error); }
       });
       form.addEventListener("submit", async (event) => {
@@ -661,7 +734,7 @@
           resetItemForm();
           panel.classList.add("hidden");
           window.showToast(wasEditing ? "Barang berhasil diperbarui." : "Barang berhasil ditambahkan.");
-          await loadItems();
+          await loadItemsSafely();
         } catch (error) { showFailure(error); }
       });
       document.getElementById("items-body").addEventListener("click", async (event) => {
@@ -697,21 +770,26 @@
         try {
           await apiFetch(`/barang/${button.dataset.deleteItem}`, { method: "DELETE" });
           window.showToast("Barang berhasil dihapus.");
-          await loadItems();
+          await loadItemsSafely();
         } catch (error) { showFailure(error); }
       });
-      loadItems().catch(showFailure);
+      loadItemsSafely().catch(showFailure);
     },
     loans: () => {
       const detailModal = document.getElementById("loan-detail-modal");
       const receiptButton = document.getElementById("export-loan-receipt");
-      receiptButton.addEventListener("click", () => exportLoanReceipt(receiptButton).catch(showFailure));
+      receiptButton.addEventListener("click", () => {
+        if (receiptButton.classList.contains("hidden")) return;
+        exportLoanReceipt(receiptButton).catch(showFailure);
+      });
       const returnModal = document.getElementById("loan-return-modal");
       const returnForm = document.getElementById("loan-return-form");
       const returnCondition = document.getElementById("loan-return-condition");
       const returnNote = document.getElementById("loan-return-note");
       const returnQuantity = document.getElementById("loan-return-quantity");
       let returnLoanId = null;
+      let returnMaxQuantity = 0;
+      let returnMultiItem = false;
       loanRequestForm = setupLoanRequestForm(() => loadLoans());
       const syncReturnNoteRequirement = () => {
         const required = returnCondition.value !== "Baik";
@@ -727,17 +805,23 @@
           throw new Error("Hanya Admin yang dapat memproses transaksi yang disetujui.");
         }
         returnLoanId = loan.id;
-        returnQuantity.max = String(loan.jumlah);
-        returnQuantity.value = String(loan.jumlah);
+        const loanItems = loan.items || [];
+        returnMaxQuantity = loanItems.reduce((total, item) => total + item.jumlah, 0);
+        returnMultiItem = loanItems.length > 1;
+        returnQuantity.max = String(returnMaxQuantity);
+        returnQuantity.value = String(returnMaxQuantity);
         returnCondition.value = "Baik";
         returnNote.value = "";
         syncReturnNoteRequirement();
         const borrowerName = state.userNames.get(loan.user_id) || `Pengguna #${loan.user_id}`;
-        const itemName = state.itemNames.get(loan.barang_id) || `Barang #${loan.barang_id}`;
+        const itemSummary = loanItems.map((detail) => {
+          const itemName = state.itemNames.get(detail.barang_id) || detail.barang?.nama_barang || `Barang #${detail.barang_id}`;
+          return `${itemName} × ${detail.jumlah}`;
+        }).join(", ");
         const summary = [
           ["Nama Peminjam", borrowerName],
-          ["Nama Barang", itemName],
-          ["Jumlah Dipinjam", loan.jumlah],
+          ["Barang dan jumlah", itemSummary],
+          ["Jumlah total dipinjam", returnMaxQuantity],
           ["Tanggal Pinjam", dateText(loan.tanggal_pinjam)],
           ["Jatuh Tempo", dateOnly(loan.tanggal_kembali)],
         ];
@@ -770,11 +854,16 @@
           try {
             const loan = await apiFetch(`/peminjaman/${detailButton.dataset.loanDetail}`);
             const state = window.loanPageState;
+            const loanItems = loan.items || [];
+            const itemSummary = loanItems.map((detail) => {
+              const itemName = state.itemNames.get(detail.barang_id) || detail.barang?.nama_barang || `Barang #${detail.barang_id}`;
+              return `${itemName} × ${detail.jumlah} (${detail.kondisi_saat_pinjam})`;
+            }).join("; ");
             const fields = [
               ["Kode Transaksi", loan.kode_peminjaman],
               ["Peminjam", state.userNames.get(loan.user_id) || state.currentUser.nama_lengkap || `Pengguna #${loan.user_id}`],
-              ["Barang", state.itemNames.get(loan.barang_id) || `Barang #${loan.barang_id}`],
-              ["Jumlah", loan.jumlah],
+              ["Barang dan jumlah", itemSummary, true],
+              ["Jumlah total", loanItems.reduce((total, item) => total + item.jumlah, 0)],
               ["Tanggal Pinjam", dateText(loan.tanggal_pinjam)],
               ["Tanggal Kembali", dateText(loan.tanggal_kembali)],
               ["Status", loan.status],
@@ -795,6 +884,9 @@
             `).join("");
             receiptButton.dataset.loanReceipt = String(loan.id);
             receiptButton.dataset.loanCode = loan.kode_peminjaman;
+            const canPrintReceipt = loan.status === "Disetujui";
+            receiptButton.hidden = !canPrintReceipt;
+            receiptButton.classList.toggle("hidden", !canPrintReceipt);
             detailModal.showModal();
           } catch (error) { showFailure(error); }
           return;
@@ -828,6 +920,14 @@
         }
         if (returnCondition.value !== "Hilang" && jumlahKembali === 0) {
           showFailure(new Error("Jumlah diterima harus lebih dari 0 kecuali barang hilang."));
+          return;
+        }
+        if (returnCondition.value === "Hilang" && jumlahKembali !== 0) {
+          showFailure(new Error("Jumlah diterima harus 0 jika semua barang ditandai hilang."));
+          return;
+        }
+        if (returnMultiItem && returnCondition.value !== "Hilang" && jumlahKembali !== returnMaxQuantity) {
+          showFailure(new Error("Semua barang dalam transaksi multi-item harus dikembalikan sekaligus."));
           return;
         }
         if (returnNote.required && !returnNote.value.trim()) {

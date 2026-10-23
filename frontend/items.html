@@ -47,8 +47,7 @@
     <form id="loan-create-form">
       <div class="panel-title" id="loan-create-title">Ajukan Peminjaman</div>
       <div class="loan-form-grid mt-5">
-        <div class="form-field full"><label class="field-label" for="loan-item-select">Pilih Barang</label><select class="input-control" id="loan-item-select" name="barang_id" required><option value="">Memuat barang…</option></select><div class="field-hint" id="loan-stock-hint">Hanya barang yang tersedia.</div></div>
-        <div class="form-field"><label class="field-label" for="loan-quantity">Jumlah</label><input class="input-control" id="loan-quantity" name="jumlah" type="number" min="1" required></div>
+        <div class="form-field full"><div class="field-label">Daftar Barang</div><div id="loan-items-container"></div><button class="btn btn-quiet mt-2" id="add-loan-item" type="button">＋ Tambah Barang</button><div class="field-hint">Pilih barang berbeda untuk setiap baris. Jumlah dibatasi stok yang tersedia.</div></div>
         <div class="form-field"><label class="field-label" for="loan-date">Tanggal Pinjam</label><input class="input-control" id="loan-date" name="tanggal_pinjam" type="date" required></div>
         <div class="form-field"><label class="field-label" for="loan-return-date">Tanggal Kembali</label><input class="input-control" id="loan-return-date" name="tanggal_kembali" type="date" required></div>
         <div class="form-field full"><label class="field-label" for="loan-note">Keterangan <span class="font-normal text-[#87928a]">(opsional)</span></label><textarea class="input-control loan-textarea" id="loan-note" name="keterangan" maxlength="1000" rows="3" placeholder="Keperluan peminjaman"></textarea></div>
@@ -56,5 +55,5 @@
       <div class="mt-6 flex justify-end gap-2"><button class="btn btn-quiet" id="cancel-loan" type="button">Batal</button><button class="btn btn-primary" id="submit-loan" type="submit">Ajukan</button></div>
     </form>
   </dialog>
-  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=export-canonical-3"></script>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=multi-item-fix-4"></script>
 </body></html>

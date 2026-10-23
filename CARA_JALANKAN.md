@@ -70,8 +70,33 @@ LANGKAH-LANGKAH:
    di atas mengarah ke frontend yang sedang dijalankan. Ganti nilai placeholder
    SMTP di file `.env` dengan kredensial inbox Mailtrap sebelum tes.
 
-   Skema database lama akan ditambah kolom verifikasi otomatis saat backend
-   dijalankan. File database tidak perlu dihapus.
+   Skema database lama akan dimigrasikan otomatis saat backend dijalankan.
+   Riwayat peminjaman lama disalin ke detail barang sebelum kolom barang dan
+   jumlah lama dihapus dari header transaksi. Sebelum peningkatan pertama,
+   cadangkan file `backend\laboratorium.db`; file database tidak perlu dihapus.
+   Karena skema lama tidak menyimpan kondisi historis barang, detail migrasi
+   memakai kondisi barang yang tercatat saat migrasi sebagai snapshot awal.
+
+   Satu transaksi dapat mencakup beberapa barang. Pengembalian untuk transaksi
+   multi-item harus dilakukan sekaligus; pengembalian sebagian tetap didukung
+   untuk transaksi yang hanya berisi satu barang.
+
+   Secara default, aplikasi lokal menggunakan SQLite di
+   `backend\laboratorium.db`. Untuk production, atur `DATABASE_URL` pada
+   environment service Render ke connection string PostgreSQL Neon. Aplikasi
+   dan script admin akan menggunakan database tersebut; script menolak berjalan
+   pada SQLite jika `ENVIRONMENT=production`.
+
+   Untuk membuat Admin pertama secara manual di Render:
+   - Pastikan `DATABASE_URL` service Render sudah menunjuk ke database Neon
+     production dan `ENVIRONMENT=production`.
+   - Buka Shell service Render, lalu jalankan dari folder proyek (yang berisi
+     folder `backend`): `python -m backend.create_admin`
+   - Isi username, nama lengkap, email, dan password pada prompt. Password
+     diminta secara tersembunyi; konfirmasi pembuatan dengan mengetik `buat`.
+   - Script hanya membuat Admin pertama. Jika Admin sudah ada, script akan
+     berhenti tanpa membuat akun tambahan. Jangan menaruh password di source
+     code atau command line.
 
 8. LOGIN
    - Admin:      username=admin       password=admin123

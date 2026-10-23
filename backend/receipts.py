@@ -88,20 +88,53 @@ def build_loan_receipt(loan) -> BytesIO:
 
     section("TRANSAKSI", [("Kode peminjaman", loan.kode_peminjaman),
                            ("Status saat ekspor", loan.status)])
-    user, item = loan.user, loan.barang
+    user = loan.user
     section("PEMINJAM", [("Nama", user.nama_lengkap),
                          ("Username / Email", user.username),
                          ("Tipe pengguna", user.tipe_user or user.role)])
-    section("BARANG DAN JADWAL", [("Kode / Nama barang", f"{item.kode_barang} / {item.nama_barang}"),
-                                  ("Laboratorium", item.laboratorium),
-                                  ("Jumlah dipinjam", f"{loan.jumlah} unit"),
-                                  ("Tanggal pinjam", _date(loan.tanggal_pinjam)),
-                                  ("Batas pengembalian", _date(loan.tanggal_kembali))])
+    item_rows = [[p("Kode / Nama barang", small), p("Jumlah / Kondisi", small)]]
+    item_rows.extend(
+        [
+            p(f"{detail.barang.kode_barang} / {detail.barang.nama_barang}"),
+            p(
+                f"{detail.jumlah} unit / "
+                f"{detail.kondisi_saat_pinjam}"
+            ),
+        ]
+        for detail in loan.items
+    )
+    items_table = Table(
+        item_rows,
+        colWidths=[width * 0.68, width * 0.32],
+        repeatRows=1,
+        hAlign="LEFT",
+    )
+    items_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf5e3")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("GRID", (0, 0), (-1, -1), .3, line),
+            ]
+        )
+    )
+    section(
+        "BARANG DAN JADWAL",
+        [
+            ("Tanggal pinjam", _date(loan.tanggal_pinjam)),
+            ("Batas pengembalian", _date(loan.tanggal_kembali)),
+        ],
+    )
+    story.extend([Spacer(1, 4), items_table])
     if loan.keterangan:
         section("KEPERLUAN / KETERANGAN", [("Keterangan", loan.keterangan)])
     if loan.jumlah_kembali is not None:
         section("PENGEMBALIAN", [("Tanggal aktual", _date(loan.tanggal_kembali_aktual)),
-                                 ("Jumlah / Kondisi", f"{loan.jumlah_kembali} unit / {loan.kondisi_kembali}"),
+                                 ("Jumlah total / Kondisi", f"{loan.jumlah_kembali} unit / {loan.kondisi_kembali}"),
                                  ("Keterlambatan", f"{loan.terlambat_hari or 0} hari"),
                                  ("Denda tercatat", "Rp " + f"{loan.denda or 0:,}".replace(",", "."))])
         if loan.catatan_admin:

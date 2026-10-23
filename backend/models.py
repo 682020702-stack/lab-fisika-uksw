@@ -88,7 +88,9 @@ class Barang(Base):
     tahun_pengadaan: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     kategori: Mapped["KategoriBarang"] = relationship(back_populates="barang")
-    peminjaman: Mapped[list["Peminjaman"]] = relationship(back_populates="barang")
+    detail_peminjaman: Mapped[list["DetailPeminjaman"]] = relationship(
+        back_populates="barang"
+    )
 
 
 class Peminjaman(Base):
@@ -103,8 +105,6 @@ class Peminjaman(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     kode_peminjaman: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    barang_id: Mapped[int] = mapped_column(ForeignKey("barang.id"))
-    jumlah: Mapped[int] = mapped_column(Integer)
     tanggal_pinjam: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )
@@ -129,7 +129,24 @@ class Peminjaman(Base):
     pemroses: Mapped["User | None"] = relationship(
         back_populates="peminjaman_diproses", foreign_keys=[diproses_oleh]
     )
-    barang: Mapped["Barang"] = relationship(back_populates="peminjaman")
+    items: Mapped[list["DetailPeminjaman"]] = relationship(
+        back_populates="peminjaman", cascade="all, delete-orphan"
+    )
+
+
+class DetailPeminjaman(Base):
+    __tablename__ = "detail_peminjaman"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    peminjaman_id: Mapped[int] = mapped_column(
+        ForeignKey("peminjaman.id", ondelete="CASCADE")
+    )
+    barang_id: Mapped[int] = mapped_column(ForeignKey("barang.id"))
+    jumlah: Mapped[int] = mapped_column(Integer)
+    kondisi_saat_pinjam: Mapped[str] = mapped_column(String(50))
+
+    peminjaman: Mapped["Peminjaman"] = relationship(back_populates="items")
+    barang: Mapped["Barang"] = relationship(back_populates="detail_peminjaman")
 
 
 class LogAktivitas(Base):

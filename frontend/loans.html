@@ -12,8 +12,8 @@
           <div class="filter-field hidden" id="custom-month-wrap"><label class="field-label" for="loan-custom-month">Bulan</label><input class="input-control" id="loan-custom-month" type="month"></div>
           <div class="text-xs text-[#728078]" id="loan-count"></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Kode Transaksi</th><th>Pengguna</th><th>Barang</th><th>Jumlah</th><th>Tanggal Pinjam</th><th>Tanggal Kembali</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="loans-body"><tr><td colspan="8"><div class="empty-state">Memuat transaksi…</div></td></tr></tbody></table></div>
-        <p class="field-hint" style="padding: 0 19px 14px;">Gunakan Export Bukti PDF pada transaksi untuk mengunduh struk. Buka PDF, lalu pilih Cetak (Ctrl + P). Status Menunggu belum menjadi izin pengambilan barang.</p>
+        <div class="table-wrap"><table><thead><tr><th>Kode Transaksi</th><th>Pengguna</th><th>Barang</th><th>Jumlah Total</th><th>Tanggal Pinjam</th><th>Tanggal Kembali</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="loans-body"><tr><td colspan="8"><div class="empty-state">Memuat transaksi…</div></td></tr></tbody></table></div>
+        <p class="field-hint" style="padding: 0 19px 14px;">Cetak Struk PDF hanya tersedia untuk transaksi yang telah disetujui. Buka PDF, lalu pilih Cetak (Ctrl + P).</p>
       </section>
     </main>
   </div></div>
@@ -21,8 +21,7 @@
     <form id="loan-create-form">
       <div class="panel-title" id="loan-create-title">Ajukan Peminjaman</div>
       <div class="loan-form-grid mt-5">
-        <div class="form-field full"><label class="field-label" for="loan-item-select">Pilih Barang</label><select class="input-control" id="loan-item-select" name="barang_id" required><option value="">Memuat barang…</option></select><div class="field-hint" id="loan-stock-hint">Hanya barang yang tersedia.</div></div>
-        <div class="form-field"><label class="field-label" for="loan-quantity">Jumlah</label><input class="input-control" id="loan-quantity" name="jumlah" type="number" min="1" required></div>
+        <div class="form-field full"><div class="field-label">Daftar Barang</div><div id="loan-items-container"></div><button class="btn btn-quiet mt-2" id="add-loan-item" type="button">＋ Tambah Barang</button><div class="field-hint">Pilih barang berbeda untuk setiap baris. Jumlah dibatasi stok yang tersedia.</div></div>
         <div class="form-field"><label class="field-label" for="loan-date">Tanggal Pinjam</label><input class="input-control" id="loan-date" name="tanggal_pinjam" type="date" required></div>
         <div class="form-field"><label class="field-label" for="loan-return-date">Tanggal Kembali</label><input class="input-control" id="loan-return-date" name="tanggal_kembali" type="date" required></div>
         <div class="form-field full"><label class="field-label" for="loan-note">Keterangan <span class="font-normal text-[#87928a]">(opsional)</span></label><textarea class="input-control loan-textarea" id="loan-note" name="keterangan" maxlength="1000" rows="3" placeholder="Keperluan peminjaman"></textarea></div>
@@ -34,7 +33,7 @@
     <div class="panel-heading detail-heading"><div class="panel-title" id="loan-detail-title">Detail Peminjaman</div><button class="btn-icon" type="button" id="close-loan-detail" aria-label="Tutup detail" title="Tutup"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
     <dl class="loan-detail-grid" id="loan-detail-content"></dl>
     <div class="flex flex-wrap items-center justify-end gap-2" style="padding: 0 20px 20px;">
-      <button class="btn btn-primary" id="export-loan-receipt" type="button">Export Bukti PDF</button>
+      <button class="btn btn-primary hidden" id="export-loan-receipt" type="button" hidden>Cetak Struk PDF</button>
     </div>
   </dialog>
   <dialog class="app-dialog" id="loan-return-modal" aria-labelledby="loan-return-title">
@@ -43,13 +42,13 @@
       <dl class="loan-detail-grid return-summary" id="loan-return-summary"></dl>
       <div class="return-late-info" id="loan-return-late"></div>
       <div class="loan-form-grid mt-5">
-        <div class="form-field"><label class="field-label" for="loan-return-quantity">Jumlah Diterima</label><input class="input-control" id="loan-return-quantity" name="jumlah_kembali" type="number" min="0" required></div>
+        <div class="form-field"><label class="field-label" for="loan-return-quantity">Jumlah Total Diterima</label><input class="input-control" id="loan-return-quantity" name="jumlah_kembali" type="number" min="0" required></div>
         <div class="form-field"><label class="field-label" for="loan-return-condition">Kondisi Barang</label><select class="input-control" id="loan-return-condition" name="kondisi_kembali" required><option>Baik</option><option>Rusak Ringan</option><option>Rusak Berat</option><option>Hilang</option></select></div>
         <div class="form-field full"><label class="field-label" for="loan-return-note">Catatan Admin <span id="loan-return-note-required" class="font-normal text-[#87928a]">(wajib jika kondisi bukan Baik)</span></label><textarea class="input-control loan-textarea" id="loan-return-note" name="catatan_admin" maxlength="2000" rows="3" placeholder="Catatan kondisi barang"></textarea></div>
       </div>
-      <p class="field-hint" id="loan-return-stock-hint">Barang hilang tidak akan menambah stok. Barang rusak berat akan ditandai Perawatan.</p>
+      <p class="field-hint" id="loan-return-stock-hint">Untuk transaksi multi-item, seluruh jumlah harus dikembalikan sekaligus; barang hilang tidak menambah stok. Barang rusak berat ditandai Perawatan.</p>
       <div class="mt-6 flex justify-end gap-2"><button class="btn btn-quiet" id="cancel-loan-return" type="button">Batal</button><button class="btn btn-return" id="confirm-loan-return" type="submit">Konfirmasi Pengembalian</button></div>
     </form>
   </dialog>
-  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=export-canonical-3"></script>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=multi-item-fix-4"></script>
 </body></html>

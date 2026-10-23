@@ -185,6 +185,7 @@ tbody tr:hover { background: #fbfdfb; }
 .app-dialog::backdrop { background: rgba(8,25,14,.52); backdrop-filter: blur(2px); }
 .loan-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
 .loan-form-grid .full { grid-column: 1/-1; }
+.loan-item-row { display: grid; grid-template-columns: minmax(0,1fr) 120px auto; align-items: end; gap: 10px; margin-bottom: 12px; }
 .loan-textarea { min-height: 88px; resize: vertical; }
 .field-hint { margin-top: 6px; color: var(--muted); font-size: 10px; }
 .loan-detail-dialog { padding: 0; }
@@ -264,5 +265,6 @@ tbody tr:hover { background: #fbfdfb; }
   .form-field.full { grid-column: auto; }
   .category-select-row { align-items: stretch; flex-direction: column; }
   .loan-form-grid, .loan-detail-grid { grid-template-columns: 1fr; }
+  .loan-item-row { grid-template-columns: minmax(0,1fr) 90px auto; }
   .loan-form-grid .full, .loan-detail-item.full { grid-column: auto; }
 }

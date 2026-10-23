@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from backend.auth import get_admin_user, get_current_user
 from backend.database import get_db
-from backend.models import Barang, KategoriBarang, Peminjaman, User
+from backend.models import Barang, DetailPeminjaman, KategoriBarang, User
 from backend.schemas import BarangCreate, BarangResponse, BarangUpdate
 from backend.utils import log_aktivitas
 
@@ -424,7 +424,11 @@ def delete_barang(
     barang = db.get(Barang, barang_id)
     if barang is None:
         raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
-    if db.query(Peminjaman.id).filter(Peminjaman.barang_id == barang_id).first():
+    if (
+        db.query(DetailPeminjaman.id)
+        .filter(DetailPeminjaman.barang_id == barang_id)
+        .first()
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Barang memiliki riwayat peminjaman dan tidak dapat dihapus",

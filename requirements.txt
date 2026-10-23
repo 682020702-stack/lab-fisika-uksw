@@ -29,3 +29,4 @@ openpyxl
 python-dotenv
 pandas
 slowapi==0.1.10
+psycopg[binary]==3.3.6

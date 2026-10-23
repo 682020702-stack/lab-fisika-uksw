@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 class ORMModel(BaseModel):
@@ -146,12 +146,26 @@ class BarangResponse(ORMModel):
     tahun_pengadaan: int | None
 
 
-class PeminjamanCreate(BaseModel):
+class PeminjamanItemCreate(BaseModel):
     barang_id: int = Field(gt=0)
     jumlah: int = Field(gt=0)
+
+
+class PeminjamanCreate(BaseModel):
+    items: list[PeminjamanItemCreate] = Field(min_length=1)
     tanggal_pinjam: datetime | None = None
-    tanggal_kembali: datetime | None = None
+    tanggal_kembali: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices("tanggal_kembali_rencana", "tanggal_kembali"),
+    )
     keterangan: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def validate_unique_items(self):
+        barang_ids = [item.barang_id for item in self.items]
+        if len(barang_ids) != len(set(barang_ids)):
+            raise ValueError("Barang yang sama tidak boleh dicantumkan lebih dari sekali")
+        return self
 
 
 class PeminjamanReturn(BaseModel):
@@ -160,12 +174,19 @@ class PeminjamanReturn(BaseModel):
     catatan_admin: str | None = Field(default=None, max_length=2000)
 
 
+class DetailPeminjamanResponse(ORMModel):
+    id: int
+    barang_id: int
+    jumlah: int
+    kondisi_saat_pinjam: str
+    barang: BarangResponse
+
+
 class PeminjamanResponse(ORMModel):
     id: int
     kode_peminjaman: str
     user_id: int
-    barang_id: int
-    jumlah: int
+    items: list[DetailPeminjamanResponse]
     tanggal_pinjam: datetime
     tanggal_kembali: datetime | None
     status: Literal["Menunggu", "Disetujui", "Ditolak", "Selesai", "Selesai - Rusak"]
