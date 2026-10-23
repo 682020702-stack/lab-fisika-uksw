@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#005024">
+  <title>Masuk | Laboratorium Fisika dan Pembelajaran Fisika</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-page="login" class="bg-white">
+  <main class="login-page">
+    <section class="login-visual" aria-label="Laboratorium Fisika">
+      <a class="login-brand login-brand-local" href="index.html">
+        <img class="login-brand-image" src="/assets/FSM_UKSW.png" width="950" height="500" alt="Logo FSM dan UKSW">
+        <span><span class="brand-title block">LABORATORIUM FISIKA DAN PEMBELAJARAN FISIKA</span><span class="brand-subtitle block">Sistem Inventaris</span></span>
+      </a>
+      <div class="login-copy">
+        <span class="eyebrow">Ruang untuk rasa ingin tahu</span>
+        <h1>Kelola alat.<br>Jaga eksperimen.</h1>
+        <p>Portal pengelolaan inventaris, peminjaman, dan aktivitas Laboratorium.</p>
+      </div>
+      <div class="login-visual-foot">Laboratorium Fisika dan Pembelajaran Fisika · Sistem Informasi Inventaris</div>
+    </section>
+    <section class="login-form-side">
+      <form class="login-form" id="login-form">
+        <span class="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6f9822]"><span class="h-1.5 w-1.5 rounded-full bg-[#90c030]"></span>Portal Laboratorium</span>
+        <h2>Selamat datang</h2>
+        <p class="intro">Akses untuk Admin dan Pengguna Terdaftar.</p>
+        <div class="login-fields">
+          <div><label class="field-label" for="username">Username</label><input class="input-control" id="username" name="username" autocomplete="username" required maxlength="100" placeholder="Masukkan username"></div>
+          <div><label class="field-label" for="password">Password</label><div class="password-wrap"><input class="input-control" id="password" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Masukkan password"><button class="password-toggle" type="button" aria-label="Tampilkan password" data-password-toggle><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+          <div class="login-error" id="login-error" role="alert"></div>
+          <button class="btn btn-primary login-submit" id="login-submit" type="submit">Masuk ke Dashboard <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="mt-8 text-center text-[11px] text-[#87928a]"><a class="font-semibold text-[#527526] hover:underline" href="forgot-password.html">Lupa Password?</a></p>
+        <p class="mt-3 text-center text-[11px] text-[#87928a]">Belum punya akun? <a class="font-semibold text-[#527526] hover:underline" href="register.html">Daftar di sini</a>.</p>
+      </form>
+    </section>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

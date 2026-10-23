@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#005024"><title>Profil Admin | Laboratorium Fisika</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="css/app.css"></head>
+<body data-page="profile">
+  <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><div class="app-main"><header class="topbar" id="topbar"></header>
+    <main class="page-content">
+      <section class="page-heading"><div><h1>Kelola Profil</h1><p>Perbarui informasi akun administrator.</p></div></section>
+      <section class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <form class="panel p-5 sm:p-7" id="profile-form">
+          <div class="mb-6 flex items-center gap-4 border-b border-[#e4eae5] pb-5"><div class="grid h-14 w-14 place-items-center rounded-full bg-[#eaf2df] font-display text-lg font-extrabold text-[#005024]" data-profile-avatar>A</div><div><div class="font-display text-base font-extrabold" data-profile-name>Administrator</div><div class="mt-1 text-xs text-[#728078]">Administrator Laboratorium</div></div></div>
+          <div class="form-grid">
+            <div class="form-field"><label class="field-label" for="profile-name">Nama Lengkap</label><input class="input-control" id="profile-name" name="nama_lengkap" required maxlength="150"></div>
+            <div class="form-field"><label class="field-label" for="profile-username">Username</label><input class="input-control bg-[#f7f9f7]" id="profile-username" readonly aria-readonly="true"></div>
+            <div class="form-field"><label class="field-label" for="profile-email">Email</label><input class="input-control" id="profile-email" name="email" type="email" required maxlength="255"></div>
+            <div class="form-field"><label class="field-label" for="profile-role">Role</label><input class="input-control bg-[#f7f9f7]" id="profile-role" readonly aria-readonly="true"></div>
+          </div>
+          <div class="mt-6 flex justify-end"><button class="btn btn-primary" type="submit">Simpan Perubahan</button></div>
+        </form>
+        <aside class="panel h-fit p-5"><div class="mb-3 font-display text-sm font-extrabold">Informasi Akun</div><div class="grid gap-4 text-xs"><div><div class="text-[#728078]">Status</div><div class="mt-2"><span class="status-pill" id="profile-status">Memuat</span></div></div><div class="border-t border-[#e4eae5] pt-4"><div class="text-[#728078]">Kredensial</div><div class="mt-1 font-semibold text-[#34433a]">Password tidak ditampilkan</div></div></div></aside>
+      </section>
+    </main>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js"></script><script src="js/pages.js"></script>
+</body></html>

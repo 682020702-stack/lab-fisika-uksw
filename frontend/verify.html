@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#005024">
+  <title>Verifikasi Email | Laboratorium Fisika</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bg-white">
+  <main class="login-page">
+    <section class="login-visual" aria-label="Laboratorium Fisika">
+      <a class="login-brand login-brand-local" href="index.html">
+        <img class="login-brand-image" src="/assets/FSM_UKSW.png" width="950" height="500" alt="Logo FSM dan UKSW">
+        <span><span class="brand-title block">LABORATORIUM FISIKA</span><span class="brand-subtitle block">Sistem Inventaris</span></span>
+      </a>
+      <div class="login-copy"><span class="eyebrow">Satu langkah lagi</span><h1>Verifikasi<br>alamat email.</h1><p>Pastikan email Anda terverifikasi untuk mengaktifkan akun.</p></div>
+      <div class="login-visual-foot">Laboratorium Fisika · Sistem Informasi Inventaris</div>
+    </section>
+    <section class="login-form-side">
+      <div class="login-form">
+        <span class="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6f9822]"><span class="h-1.5 w-1.5 rounded-full bg-[#90c030]"></span>Portal Laboratorium</span>
+        <h2>Verifikasi email</h2>
+        <p class="intro" id="verification-status" role="status" aria-live="polite">Memverifikasi...</p>
+        <a class="btn btn-primary login-submit hidden" id="login-link" href="index.html">Kembali ke halaman login</a>
+      </div>
+    </section>
+  </main>
+  <script src="js/api.js"></script>
+  <script>
+    (async () => {
+      const status = document.getElementById("verification-status");
+      const loginLink = document.getElementById("login-link");
+      const token = new URLSearchParams(location.search).get("token");
+      try {
+        if (!token) throw new Error("Token tidak valid");
+        const result = await window.LabAPI.apiFetch(`/verify-email?token=${encodeURIComponent(token)}`);
+        status.textContent = result.message || "Berhasil! Silakan login.";
+        loginLink.classList.remove("hidden");
+      } catch (error) {
+        status.textContent = `Gagal: ${error.message || "Token tidak valid"}`;
+      }
+    })();
+  </script>
+</body>
+</html>

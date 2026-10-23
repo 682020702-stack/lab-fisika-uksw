@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#005024"><title>Laporan Transaksi | Laboratorium Fisika</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="css/app.css"></head>
+<body data-page="reports">
+  <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><div class="app-main"><header class="topbar" id="topbar"></header>
+    <main class="page-content">
+      <section class="page-heading"><div><h1>Laporan Transaksi</h1><p>Telusuri riwayat peminjaman berdasarkan periode.</p></div></section>
+      <section class="panel mb-5">
+        <div class="panel-heading"><div class="panel-title">Rentang Tanggal</div><span class="panel-note">Tanggal berdasarkan waktu pengajuan</span></div>
+        <form class="filter-row" id="report-filter">
+          <div class="filter-field"><label class="field-label" for="report-from">Dari tanggal</label><input class="input-control" id="report-from" type="date"></div>
+          <div class="filter-field"><label class="field-label" for="report-to">Sampai tanggal</label><input class="input-control" id="report-to" type="date"></div>
+          <button class="btn btn-primary" type="submit">Tampilkan</button>
+          <span class="ml-auto flex flex-wrap gap-2"><button class="btn btn-quiet" type="button" data-export="pdf"><span aria-hidden="true">↓</span> Export PDF</button><button class="btn btn-quiet" type="button" data-export="excel"><span aria-hidden="true">↓</span> Export Excel</button></span>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-heading"><div class="panel-title">Daftar Transaksi</div><div class="panel-note" id="report-count"></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Kode Transaksi</th><th>ID Pengguna</th><th>ID Barang</th><th>Jumlah</th><th>Tanggal Pinjam</th><th>Tanggal Kembali</th><th>Status</th></tr></thead><tbody id="reports-body"><tr><td colspan="7"><div class="empty-state">Pilih periode untuk memuat laporan…</div></td></tr></tbody></table></div>
+      </section>
+    </main>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=export-canonical-3"></script>
+</body></html>

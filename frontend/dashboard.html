@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#005024">
+  <title>Dashboard | Laboratorium Fisika</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="css/app.css">
+</head>
+<body data-page="dashboard">
+  <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><div class="app-main"><header class="topbar" id="topbar"></header>
+    <main class="page-content">
+      <section class="page-heading"><div><h1>Ringkasan Laboratorium</h1><p>Pantau inventaris dan aktivitas peminjaman hari ini.</p></div><span class="status-pill">Sistem aktif</span></section>
+      <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Statistik utama">
+        <article class="panel stat-card hidden" data-admin-only><div class="stat-label">Total Pengguna</div><div class="stat-value" data-stat="admin-users"><div class="skeleton w-14"></div></div><div class="stat-foot">Akun terdaftar</div></article>
+        <article class="panel stat-card hidden" data-admin-only><div class="stat-label">Total Barang</div><div class="stat-value" data-stat="admin-items"><div class="skeleton w-14"></div></div><div class="stat-foot">Jenis inventaris</div></article>
+        <article class="panel stat-card hidden" data-admin-only><div class="stat-label">Total Peminjaman</div><div class="stat-value" data-stat="admin-loans"><div class="skeleton w-14"></div></div><div class="stat-foot">Seluruh transaksi</div></article>
+        <article class="panel stat-card hidden" data-admin-only><div class="stat-label">Menunggu</div><div class="stat-value" data-stat="admin-pending"><div class="skeleton w-14"></div></div><div class="stat-foot">Perlu ditinjau</div></article>
+        <article class="panel stat-card hidden" data-user-only><div class="stat-label">Barang Tersedia</div><div class="stat-value" data-stat="user-available"><div class="skeleton w-14"></div></div><div class="stat-foot">Jenis barang dengan stok</div></article>
+        <article class="panel stat-card hidden" data-user-only><div class="stat-label">Peminjaman Saya</div><div class="stat-value" data-stat="user-loans"><div class="skeleton w-14"></div></div><div class="stat-foot">Seluruh peminjaman Anda</div></article>
+        <article class="panel stat-card hidden" data-user-only><div class="stat-label">Menunggu Approval</div><div class="stat-value" data-stat="user-pending"><div class="skeleton w-14"></div></div><div class="stat-foot">Pengajuan Anda</div></article>
+        <article class="panel stat-card hidden" data-user-only><div class="stat-label">Selesai</div><div class="stat-value" data-stat="user-completed"><div class="skeleton w-14"></div></div><div class="stat-foot">Peminjaman dikembalikan</div></article>
+      </section>
+      <section class="mt-7">
+        <div class="mb-3 flex items-center justify-between"><div><h2 class="font-display text-sm font-extrabold">Aksi Cepat</h2><p class="mt-1 text-xs text-[#728078]">Buka pekerjaan yang sering digunakan.</p></div></div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <a class="quick-link hidden" data-admin-only href="items.html#new-item"><span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14m-7-7h14"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg></span><span class="quick-title">Tambah Barang</span><span class="quick-arrow">↗</span></a>
+          <a class="quick-link hidden" data-admin-only href="users.html"><span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1m3-12v6m-3-3h6"/></svg></span><span class="quick-title">Kelola Pengguna</span><span class="quick-arrow">↗</span></a>
+          <a class="quick-link hidden" data-admin-only href="reports.html"><span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h4"/></svg></span><span class="quick-title">Lihat Laporan</span><span class="quick-arrow">↗</span></a>
+          <a class="quick-link hidden" data-admin-only href="activity.html"><span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span><span class="quick-title">Log Aktivitas</span><span class="quick-arrow">↗</span></a>
+          <a class="quick-link" href="notifications.html"><span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4"/></svg></span><span class="quick-title">Cek Notifikasi</span><span class="quick-arrow">↗</span></a>
+        </div>
+      </section>
+      <section class="panel mt-7">
+        <div class="panel-heading"><div><div class="panel-title">Aktivitas Terbaru</div><div class="panel-note mt-1">Transaksi terbaru di laboratorium</div></div><a class="text-xs font-bold text-[#527526] hover:underline" href="loans.html">Semua peminjaman →</a></div>
+        <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Pengguna</th><th>Aksi</th><th>Status</th></tr></thead><tbody id="activity-body"><tr><td colspan="4"><div class="empty-state">Memuat aktivitas…</div></td></tr></tbody></table></div>
+      </section>
+    </main>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js?v=export-canonical-3"></script><script src="js/pages.js?v=export-canonical-3"></script>
+</body>
+</html>

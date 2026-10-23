@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#005024"><title>Data Pengguna | Laboratorium Fisika</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="css/app.css"></head>
+<body data-page="users">
+  <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><div class="app-main"><header class="topbar" id="topbar"></header>
+    <main class="page-content">
+      <section class="page-heading"><div><h1>Data Pengguna</h1><p>Kelola akun yang memiliki akses ke sistem laboratorium.</p></div><button class="btn btn-primary hidden" data-admin-only type="button" data-toggle-user-form><span aria-hidden="true">＋</span> Tambah Pengguna</button></section>
+      <section class="panel mb-5 hidden" id="user-form-panel">
+        <div class="panel-heading"><div class="panel-title" id="user-form-title">Pengguna Baru</div><button class="btn btn-quiet" type="button" data-toggle-user-form>Tutup</button></div>
+        <form class="p-5" id="user-form"><div class="form-grid">
+          <div class="form-field"><label class="field-label" for="user-name">Nama lengkap</label><input class="input-control" id="user-name" name="nama_lengkap" required maxlength="150"></div>
+          <div class="form-field"><label class="field-label" for="user-username">Username</label><input class="input-control" id="user-username" name="username" required minlength="3" maxlength="100"></div>
+          <div class="form-field"><label class="field-label" for="user-email">Email</label><input class="input-control" id="user-email" name="email" type="email" required maxlength="255"></div>
+          <div class="form-field"><label class="field-label" id="user-password-label" for="user-password">Password awal</label><input class="input-control" id="user-password" name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></div>
+          <div class="form-field"><label class="field-label" for="user-role">Role</label><select class="input-control" id="user-role" name="role"><option>User</option><option>Admin</option></select></div>
+          <div class="form-field"><label class="field-label" for="user-type">Tipe pengguna</label><select class="input-control" id="user-type" name="tipe_user"><option value="">Tidak ditentukan</option><option>Mahasiswa</option><option>Dosen</option><option>Umum</option></select></div>
+          <div class="form-field"><label class="field-label" for="user-status">Status</label><select class="input-control" id="user-status" name="status"><option>Aktif</option><option>Pending</option></select></div>
+        </div><div class="mt-5 flex justify-end"><button class="btn btn-primary" id="user-submit" type="submit">Simpan Pengguna</button></div></form>
+      </section>
+      <section class="panel">
+        <div class="filter-row">
+          <div class="filter-field search-field"><label class="field-label" for="user-search">Cari pengguna</label><input class="input-control" id="user-search" type="search" placeholder="Nama, username, atau email"></div>
+          <div class="filter-field"><label class="field-label" for="user-role-filter">Role</label><select class="input-control" id="user-role-filter"><option value="">Semua role</option><option>Admin</option><option>User</option></select></div>
+          <div class="filter-field"><label class="field-label" for="user-status-filter">Status</label><select class="input-control" id="user-status-filter"><option value="">Semua status</option><option>Aktif</option><option>Pending</option></select></div>
+          <div class="text-xs text-[#728078]" id="user-count"></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nama</th><th>Role</th><th>Tipe pengguna</th><th>Username / Email</th><th>Password</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="users-body"><tr><td colspan="8"><div class="empty-state">Memuat pengguna…</div></td></tr></tbody></table></div>
+      </section>
+    </main>
+  </div></div>
+  <script src="js/api.js"></script><script src="js/auth.js"></script><script src="js/layout.js"></script><script src="js/pages.js"></script>
+</body></html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#005024">
+  <title>Daftar | Laboratorium Fisika</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-page="register" class="bg-white">
+  <main class="login-page">
+    <section class="login-visual" aria-label="Laboratorium Fisika">
+      <a class="login-brand" href="index.html">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9" ry="4.2"/><ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(120 12 12)"/></svg></span>
+        <span><span class="brand-title block">LABORATORIUM FISIKA</span><span class="brand-subtitle block">Sistem Inventaris</span></span>
+      </a>
+      <div class="login-copy"><span class="eyebrow">Akses laboratorium</span><h1>Bergabung.<br>Ajukan peminjaman.</h1><p>Daftarkan akun pengguna untuk mengakses data barang dan mengajukan peminjaman.</p></div>
+      <div class="login-visual-foot">Laboratorium Fisika · Sistem Informasi Inventaris</div>
+    </section>
+    <section class="login-form-side">
+      <form class="login-form" id="register-form">
+        <span class="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6f9822]"><span class="h-1.5 w-1.5 rounded-full bg-[#90c030]"></span>Portal Laboratorium</span>
+        <h2>Buat akun</h2>
+        <p class="intro">Akun baru perlu diverifikasi Admin sebelum dapat digunakan.</p>
+        <div class="login-fields">
+          <div><label class="field-label" for="register-name">Nama lengkap</label><input class="input-control" id="register-name" name="nama_lengkap" autocomplete="name" required maxlength="150"></div>
+          <div><label class="field-label" for="register-username">Username</label><input class="input-control" id="register-username" name="username" autocomplete="username" required minlength="3" maxlength="100"></div>
+          <div><label class="field-label" for="register-email">Email</label><input class="input-control" id="register-email" name="email" type="email" autocomplete="email" required maxlength="255"></div>
+          <div><label class="field-label" for="register-type">Tipe pengguna</label><select class="input-control" id="register-type" name="tipe_user" required><option value="Mahasiswa">Mahasiswa</option><option value="Dosen">Dosen</option><option value="Umum">Umum</option></select></div>
+          <div><label class="field-label" for="register-password">Password</label><input class="input-control" id="register-password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></div>
+          <div class="login-error" id="register-message" role="status"></div>
+          <button class="btn btn-primary login-submit" id="register-submit" type="submit">Daftar</button>
+        </div>
+        <p class="mt-8 text-center text-[11px] text-[#87928a]">Sudah punya akun? <a class="font-semibold text-[#527526] hover:underline" href="index.html">Masuk</a>.</p>
+      </form>
+    </section>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
