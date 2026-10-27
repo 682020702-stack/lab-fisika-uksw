@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("5/minute")
+@limiter.limit("5/5minutes")
 def login(
     payload: LoginRequest,
     request: Request,

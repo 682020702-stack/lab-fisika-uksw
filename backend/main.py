@@ -43,16 +43,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+async def rate_limit_exceeded_handler(
+    request: Request, _exc: RateLimitExceeded
+) -> JSONResponse:
+    if request.url.path == "/login":
+        detail = "Terlalu banyak percobaan login. Silakan coba lagi dalam 5 menit."
+    else:
+        detail = "Terlalu banyak percobaan. Silakan coba lagi dalam 1 menit."
+    return JSONResponse(status_code=429, content={"detail": detail})
+
+
 app.state.limiter = limiter
-app.add_exception_handler(
-    RateLimitExceeded,
-    lambda _request, _exc: JSONResponse(
-        status_code=429,
-        content={
-            "detail": "Terlalu banyak percobaan. Silakan coba lagi dalam 1 menit."
-        },
-    ),
-)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
