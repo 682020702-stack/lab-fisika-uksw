@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.db
+laboratorium.db
+laboratorium.db.before-*
+backup/
