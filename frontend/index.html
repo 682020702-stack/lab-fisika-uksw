@@ -7,6 +7,77 @@
   <title>Masuk | Laboratorium Fisika dan Pembelajaran Fisika</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="css/app.css">
+  <style>
+    /* Komponen SOP: isi dokumen mengikuti SOP/LAB-FIS/2026/001, revisi 00. */
+    .sop-open-button { width: 100%; gap: 8px; margin-top: 16px; }
+    .sop-modal { width: min(1100px, calc(100% - 32px)); height: min(88vh, 850px); height: min(88dvh, 850px); max-height: calc(100vh - 24px); padding: 0; border: 1px solid #dce5dd; border-radius: 12px; background: white; color: #18231d; box-shadow: 0 24px 80px rgba(0,40,18,.28); }
+    .sop-modal::backdrop { background: rgba(0,35,17,.6); }
+    .sop-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    .sop-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid #e4eae5; }
+    .sop-header h2 { margin: 0; color: #005024; font-family: var(--font-display,sans-serif); font-size: 21px; font-weight: 800; line-height: 1.3; }
+    .sop-header p { margin: 6px 0 0; color: #728078; font-size: 12px; line-height: 1.6; }
+    .sop-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .sop-meta span { padding: 4px 8px; background: #f1f7eb; color: #355a29; border-radius: 5px; font-size: 11px; }
+    .sop-close-form { margin: 0; }
+    .sop-toolbar { display: flex; flex-wrap: wrap; flex-shrink: 0; align-items: center; gap: 10px; padding: 12px 24px; border-bottom: 1px solid #e4eae5; background: #fbfdfb; }
+    .sop-search { flex: 1 1 230px; min-width: 0; }
+    .sop-search label { display: block; margin-bottom: 4px; color: #48564d; font-size: 11px; font-weight: 700; }
+    .sop-search input { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid #d9e2db; border-radius: 5px; background: white; color: #18231d; font: inherit; font-size: 12px; }
+    .sop-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .sop-modal .sop-action { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 8px 10px; border: 1px solid #dce5dd; border-radius: 5px; background: white; color: #005024; font: inherit; font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .sop-modal .sop-action-primary { background: #005024; border-color: #005024; color: white; }
+    .sop-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); flex: 1; min-height: 0; }
+    .sop-nav { overflow: auto; padding: 16px 12px; border-right: 1px solid #e4eae5; background: #f7faf5; }
+    .sop-nav h3 { margin: 0 10px 10px; color: #728078; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .sop-nav button { display: block; width: 100%; padding: 10px; margin-bottom: 5px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #344c3c; font: inherit; font-size: 12px; text-align: left; line-height: 1.5; cursor: pointer; }
+    .sop-nav button span { display: block; margin-bottom: 3px; color: #6f9822; font-size: 10px; font-weight: 800; }
+    .sop-nav button:hover { border-color: #dce5dd; background: white; }
+    .sop-content { min-width: 0; min-height: 0; overflow-y: auto; padding: 18px 22px 24px; overscroll-behavior: contain; }
+    .sop-content, .sop-nav, .sop-table-wrap { scrollbar-width: thin; scrollbar-color: #a6b7ac #f4f7f4; }
+    .sop-chapter { margin-bottom: 12px; border: 1px solid #dce5dd; border-radius: 8px; overflow: hidden; scroll-margin-top: 8px; }
+    .sop-chapter > summary { display: list-item; padding: 16px; cursor: pointer; color: #005024; font-size: 14px; font-weight: 700; line-height: 1.6; }
+    .sop-chapter > summary .sop-chapter-label { margin-right: 10px; color: #6f9822; font-size: 11px; white-space: nowrap; }
+    .sop-chapter[open] > summary, .sop-chapter > summary:hover { background: #f1f7eb; }
+    .sop-chapter-body { padding: 4px 18px 20px; border-top: 1px solid #e4eae5; color: #34433a; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+    .sop-chapter-body h3 { margin: 22px 0 10px; color: #005024; font-size: 15px; font-weight: 800; line-height: 1.6; }
+    .sop-chapter-body h4 { margin: 16px 0 8px; color: #344c3c; font-size: 13px; font-weight: 700; }
+    .sop-chapter-body p { margin: 10px 0; }
+    .sop-rule { display: grid; grid-template-columns: 46px minmax(0,1fr); gap: 8px; margin: 8px 0; }
+    .sop-rule p { margin: 0; }
+    .sop-rule-number { color: #6f9822; font-size: 12px; font-weight: 700; }
+    .sop-notice { padding: 12px 14px; border-left: 3px solid #90c030; background: #f4f8ee; border-radius: 0 6px 6px 0; }
+    .sop-table-wrap { max-width: 100%; overflow-x: auto; margin: 14px 0; border: 1px solid #dce5dd; border-radius: 6px; }
+    .sop-modal .sop-table-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: left; }
+    .sop-modal .sop-table-wide table { min-width: 650px; }
+    .sop-modal .sop-table-wrap caption { padding: 9px 12px; background: #f5f8f2; color: #005024; font-size: 11px; text-align: left; }
+    .sop-modal .sop-table-wrap th, .sop-modal .sop-table-wrap td { padding: 10px 12px; border-bottom: 1px solid #e4eae5; font-size: 12px; line-height: 1.7; vertical-align: top; white-space: normal; overflow-wrap: anywhere; letter-spacing: normal; text-transform: none; }
+    .sop-modal .sop-table-wrap th { background: #005024; color: white; font-weight: 700; }
+    .sop-modal .sop-table-wrap tbody tr:nth-child(even) { background: #f7faf5; }
+    .sop-modal .sop-table-wrap tbody tr:last-child td { border-bottom: 0; }
+    .sop-chapter-body .sop-source { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e4eae5; color: #728078; font-size: 11px; }
+    .sop-source a { color: #005024; text-decoration: underline; }
+    .sop-signatures { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 16px; }
+    .sop-signatures > div { padding: 12px; border: 1px solid #e4eae5; border-radius: 6px; font-size: 12px; }
+    .sop-signature-space { padding-top: 28px; }
+    .sop-results { margin: 0 0 12px; color: #728078; font-size: 11px; }
+    .sop-empty { padding: 24px 16px; color: #728078; text-align: center; line-height: 1.8; }
+    .sop-modal [hidden] { display: none !important; }
+    .sop-modal button:focus-visible, .sop-modal a:focus-visible, .sop-modal summary:focus-visible, .sop-modal input:focus-visible, .sop-table-wrap:focus-visible, .sop-open-button:focus-visible { outline: 2px solid #6f9822; outline-offset: 2px; }
+    @media (max-width: 700px) {
+      .sop-modal { width: calc(100% - 16px); height: 92vh; height: 92dvh; }
+      .sop-header { padding: 16px; gap: 10px; }
+      .sop-header h2 { font-size: 17px; }
+      .sop-toolbar { padding: 10px 16px; }
+      .sop-search { flex-basis: 100%; }
+      .sop-layout { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); }
+      .sop-nav { display: flex; gap: 5px; max-height: 88px; padding: 8px 12px; border-right: 0; border-bottom: 1px solid #e4eae5; }
+      .sop-nav h3 { display: none; }
+      .sop-nav button { flex: 0 0 165px; margin: 0; padding: 6px 8px; font-size: 10px; }
+      .sop-content { padding: 14px 12px; }
+      .sop-chapter-body { padding: 2px 12px 16px; }
+      .sop-chapter > summary { padding: 12px; font-size: 12px; }
+    }
+  </style>
 </head>
 <body data-page="login" class="bg-white">
   <main class="login-page">
@@ -35,9 +106,253 @@
         </div>
         <p class="mt-8 text-center text-[11px] text-[#87928a]"><a class="font-semibold text-[#527526] hover:underline" href="forgot-password.html">Lupa Password?</a></p>
         <p class="mt-3 text-center text-[11px] text-[#87928a]">Belum punya akun? <a class="font-semibold text-[#527526] hover:underline" href="register.html">Daftar di sini</a>.</p>
+        <button class="btn btn-quiet sop-open-button" id="open-lab-sop" type="button" aria-haspopup="dialog" aria-controls="lab-sop-modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5"/></svg>
+          SOP Laboratorium
+        </button>
       </form>
     </section>
   </main>
+  <dialog class="sop-modal" id="lab-sop-modal" aria-labelledby="lab-sop-title" aria-describedby="lab-sop-description">
+    <div class="sop-shell">
+      <div class="sop-header">
+        <div>
+          <h2 id="lab-sop-title">SOP Laboratorium Fisika dan Pembelajaran Fisika</h2>
+          <p id="lab-sop-description">Pengelolaan, penggunaan, keselamatan, dan tata tertib laboratorium berbasis ISO.</p>
+          <div class="sop-meta"><span>SOP/LAB-FIS/2026/001</span><span>Revisi 00</span><span>Berlaku: 17 Agustus 2026</span></div>
+        </div>
+        <form class="sop-close-form" method="dialog"><button class="sop-action" type="submit" autofocus>Tutup</button></form>
+      </div>
+      <div class="sop-toolbar">
+        <div class="sop-search"><label for="sop-search">Cari dalam SOP</label><input id="sop-search" type="search" placeholder="Contoh: peminjaman, APD, keterlambatan…" autocomplete="off"></div>
+        <div class="sop-tools"><button class="sop-action" id="sop-expand" type="button">Buka semua</button><button class="sop-action" id="sop-collapse" type="button">Tutup semua</button><a class="sop-action sop-action-primary" href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf" target="_blank" rel="noopener">Baca PDF asli ↗</a><a class="sop-action" href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf" download>Unduh PDF</a></div>
+      </div>
+      <div class="sop-layout">
+        <nav class="sop-nav" aria-label="Daftar isi SOP"><h3>Daftar isi</h3><button type="button" data-sop-target="sop-bab-1"><span>BAB I</span>Identitas &amp; Pendahuluan</button><button type="button" data-sop-target="sop-bab-2"><span>BAB II</span>Tata Kelola dan Struktur Organisasi</button><button type="button" data-sop-target="sop-bab-3"><span>BAB III</span>Prosedur Penggunaan Laboratorium</button><button type="button" data-sop-target="sop-bab-4"><span>BAB IV</span>Pengelolaan Peralatan dan Pemeliharaan</button><button type="button" data-sop-target="sop-bab-5"><span>BAB V</span>Keselamatan dan Kesehatan Kerja (K3) dan Keamanan</button><button type="button" data-sop-target="sop-bab-6"><span>BAB VI</span>Penjaminan Mutu, Evaluasi, dan Audit</button><button type="button" data-sop-target="sop-lampiran"><span>LAMPIRAN</span>Formulir dan Checklist</button><button type="button" data-sop-target="sop-pengesahan"><span>PENGESAHAN</span>Lembar Pengesahan Dokumen</button></nav>
+        <div class="sop-content" id="sop-content">
+          <p class="sop-results" id="sop-results" role="status" aria-live="polite">6 bab, 4 lampiran, dan lembar pengesahan</p>
+          <!-- MULAI ISI SOP: setiap details adalah satu bab/bagian dari PDF asli. -->
+          <details class="sop-chapter" id="sop-bab-1" open>
+      <summary><span class="sop-chapter-label">BAB I</span><span>Identitas &amp; Pendahuluan</span></summary>
+      <div class="sop-chapter-body"><h3>1.1 Identitas dan Parameter Dokumen</h3>
+<p>Berikut adalah identitas administratif dan rincian dokumen SOP Laboratorium Fisika:</p>
+<div class="sop-table-wrap" tabindex="0" role="region" aria-label="Identitas dan parameter dokumen"><table><caption>Identitas dan parameter dokumen</caption><thead><tr><th scope="col">Parameter dokumen</th><th scope="col">Keterangan / Detail</th></tr></thead><tbody><tr><td>Nama Institusi</td><td>Universitas Kristen Satya Wacana Salatiga</td></tr><tr><td>Fakultas / Unit</td><td>Fakultas Sains dan Matematika (FSM)</td></tr><tr><td>Program Studi</td><td>Progdi Fisika dan Pendidikan Fisika</td></tr><tr><td>Nama Laboratorium</td><td>Laboratorium Fisika dan Pembelajaran Fisika</td></tr><tr><td>Nomor Dokumen</td><td>SOP/LAB-FIS/2026/001</td></tr><tr><td>Tanggal Berlaku</td><td>17 Agustus 2026</td></tr><tr><td>Nomor Revisi</td><td>00</td></tr><tr><td>Pengesahan</td><td>Ketua Program Studi Fisika dan Pendidikan Fisika FSM UKSW</td></tr></tbody></table></div>
+<h3>1.2 Status dan Dasar Penyusunan Dokumen ISO</h3>
+<p>Dokumen Standar Operasional Prosedur (SOP) ini dirancang sebagai panduan kerja operasional di Laboratorium Fisika dan Pendidikan Fisika FSM UKSW. Panduan ini berfokus pada peningkatan mutu secara berkelanjutan serta jaminan keselamatan kerja dengan menyelaraskan tiga standar internasional</p>
+<h4>utama</h4>
+<div class="sop-rule"><span aria-hidden="true">•</span><p>ISO 9001:2015 (Sistem Manajemen Mutu): Digunakan sebagai acuan dalam mengendalikan proses kerja, mengelola dokumen, mengevaluasi operasional, dan meningkatkan kualitas layanan secara konsisten.</p></div>
+<div class="sop-rule"><span aria-hidden="true">•</span><p>ISO 45001:2018 (Sistem Manajemen K3): Mengatur pemetaan bahaya, penilaian dan pengendalian risiko K3, kesiapsiagaan tanggap darurat, serta penanganan insiden untuk melindungi keselamatan seluruh pengguna lab.</p></div>
+<div class="sop-rule"><span aria-hidden="true">•</span><p>ISO/IEC 17025:2017 (Persyaratan Utama Laboratorium Pengujian &amp; Kalibrasi): Menjadi panduan teknis untuk menjaga keandalan, pemeliharaan, dan kalibrasi alat uji jika laboratorium melaksanakan pengujian atau kalibrasi resmi. Catatan Penting Akreditasi: Penerapan acuan ISO dalam dokumen ini berfungsi sebagai standar panduan internal laboratorium. Hal ini tidak secara otomatis menunjukkan bahwa laboratorium telah terakreditasi resmi oleh lembaga luar. Sertifikasi resmi hanya diberikan setelah melalui audit formal dari lembaga akreditasi yang berwenang.</p></div>
+<h3>1.3 Latar Belakang</h3>
+<p>Laboratorium Fisika dan Pendidikan Fisika FSM UKSW merupakan fasilitas utama yang menunjang kegiatan perkuliahan, praktikum, penelitian, pengabdian masyarakat, serta pengembangan ilmu fisika dan penerapannya. Dalam setiap kegiatannya, pengguna berinteraksi langsung dengan berbagai peralatan presisi, komponen elektronik, instalasi listrik, perangkat mekanik, alat optik, dan alat peraga. Keberhasilan seluruh aktivitas akademik ini sangat bergantung pada pengelolaan yang rapi, kondisi alat yang andal, jaminan keselamatan kerja, serta kedisiplinan penggunanya. Pengguna laboratorium berasal dari berbagai latar belakang, mulai dari dosen, mahasiswa, teknisi, hingga peneliti dari luar unit. Keberagaman ini memerlukan aturan yang jelas, adil, dan terstruktur untuk mencegah bentrokan jadwal, penyalahgunaan fasilitas, kerusakan alat, maupun kecelakaan kerja. Oleh karena itu, SOP berbasis standar ISO ini disusun sebagai pedoman resmi agar suasana kerja ilmiah di laboratorium selalu aman, efisien, profesional, dan berstandar mutu tinggi.</p>
+<h3>1.4 Tujuan dan Ruang Lingkup Dokumen</h3>
+<h4>Tujuan SOP</h4>
+<div class="sop-rule"><span class="sop-rule-number">1.4.1</span><p>Menyediakan panduan operasional yang jelas, terstruktur, dan konsisten untuk seluruh aktivitas laboratorium.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.2</span><p>Menjamin keselamatan, kesehatan kerja, dan kenyamanan bagi dosen, mahasiswa, staf, maupun tamu di area laboratorium.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.3</span><p>Mengatur mekanisme pengajuan ruang, peminjaman, pemeliharaan, hingga pengembalian alat secara tertib.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.4</span><p>Melindungi aset laboratorium dari risiko kerusakan, kehilangan, atau penurunan fungsi akibat penggunaan yang keliru.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.5</span><p>Membangun budaya kerja profesional berstandar ISO melalui sistem dokumentasi yang teratur dan akuntabel.</p></div>
+<h4>Ruang Lingkup SOP</h4>
+<div class="sop-rule"><span class="sop-rule-number">1.4.6</span><p>Perencanaan, pengajuan, dan penjadwalan penggunaan ruang lab serta peralatan.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.7</span><p>Pelaksanaan praktikum rutin, pembelajaran interaktif, riset tugas akhir, dan penelitian ilmiah.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.8</span><p>Prosedur peminjaman, perpanjangan, dan pengembalian alat (baik di dalam maupun di luar lab).</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.9</span><p>Aturan keselamatan kerja, standar pakaian, dan penggunaan Alat Pelindung Diri (APD).</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.10</span><p>Penanganan kondisi darurat, insiden K3, serta kerusakan atau kehilangan alat.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">1.4.11</span><p>Pengendalian dokumen, evaluasi kinerja, audit internal, dan perbaikan mutu berkelanjutan.</p></div>
+        <p class="sop-source">Sumber: halaman 3–4 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=3" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-bab-2">
+      <summary><span class="sop-chapter-label">BAB II</span><span>Tata Kelola dan Struktur Organisasi</span></summary>
+      <div class="sop-chapter-body"><h3>2.1 Struktur Organisasi &amp; Pembagian Tugas</h3>
+<p>Tata kelola Laboratorium Fisika dipimpin oleh Kepala Laboratorium yang bertanggung jawab langsung kepada Ketua Program Studi dan Dekan FSM UKSW, serta dibantu oleh Tim Laboran/Teknisi. Pembagian</p>
+<h4>perannya adalah sebagai berikut</h4>
+<div class="sop-rule"><span class="sop-rule-number">2.1.1</span><p>Kepala Laboratorium: Bertanggung jawab merumuskan kebijakan operasional, menyusun prioritas jadwal, mengevaluasi SOP secara berkala, mengawasi penerapan K3, serta merencanakan pengembangan laboratorium.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.1.2</span><p>Laboran / Teknisi: Bertanggung jawab mengelola teknis harian, menyiapkan alat praktikum, mengecek kondisi alat, melayani peminjaman dan pengembalian, melakukan perawatan rutin, serta memantau penerapan K3 harian.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.1.3</span><p>Dosen Penanggung Jawab Kegiatan / Praktikum: Bertanggung jawab mengawasi pelaksanaan akademis dan keselamatan mahasiswa selama kegiatan di laboratorium, serta memastikan seluruh peserta mematuhi SOP.</p></div>
+<h3>2.2 Klasifikasi Pengguna Laboratorium</h3>
+<h4>Pengguna laboratorium dikelompokkan menjadi tiga kategori utama</h4>
+<div class="sop-rule"><span class="sop-rule-number">2.2.1</span><p>Pengguna Internal: Dosen, mahasiswa, dan staf dari Prodi Fisika serta Pendidikan Fisika FSM UKSW. Kelompok ini mendapat prioritas utama untuk kegiatan kurikulum dan penelitian institusi.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.2.2</span><p>Pengguna Unit Lain: Dosen, mahasiswa, atau peneliti dari prodi/fakultas lain di lingkungan UKSW. Penggunaan diizinkan selama tidak mengganggu jadwal utama dan mendapat persetujuan Kepala Lab.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.2.3</span><p>Pengguna Eksternal: Pihak dari luar institusi (sekolah, kampus mitra, lembaga riset, atau industri) yang mengajukan penggunaan fasilitas melalui izin resmi, kerja sama, atau pengujian khusus.</p></div>
+<h3>2.3 Hak dan Kewajiban Pengguna</h3>
+<h4>Hak Pengguna</h4>
+<div class="sop-rule"><span class="sop-rule-number">2.3.1</span><p>Mendapatkan fasilitas ruang dan peralatan yang bersih, aman, dan siap pakai sesuai jadwal yang telah disetujui.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.3.2</span><p>Menerima pengarahan keselamatan (safety briefing) dan penjelasan teknis pengoperasian alat dari teknisi/laboran.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.3.3</span><p>Mendapatkan perlindungan K3 serta akses terhadap peralatan keselamatan dan tanggap darurat di area laboratorium.</p></div>
+<h4>Kewajiban Pengguna</h4>
+<div class="sop-rule"><span class="sop-rule-number">2.3.4</span><p>Mematuhi seluruh ketentuan SOP, tata tertib, dan petunjuk keselamatan yang berlaku.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.3.5</span><p>Menjaga kebersihan, kerapian, ketertiban, dan keamanan ruang serta peralatan yang digunakan.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.3.6</span><p>Mengoperasikan alat sesuai dengan petunjuk teknis dan batas kemampuannya.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">2.3.7</span><p>Segera melaporkan kepada laboran jika menemukan kerusakan alat, gangguan fungsi, atau situasi tidak aman.</p></div>
+<h3>2.4 Pengendalian Informasi Terdokumentasi</h3>
+<p>Guna menjamin keabsahan dan keteraturan dokumen sesuai standar ISO, mekanisme pengendalian SOP</p>
+<h4>diatur sebagai berikut</h4>
+<div class="sop-table-wrap sop-table-wide" tabindex="0" role="region" aria-label="Pengendalian informasi terdokumentasi"><table><caption>Pengendalian informasi terdokumentasi</caption><thead><tr><th scope="col">Elemen pengendalian</th><th scope="col">Ketentuan operasional</th><th scope="col">Penanggung jawab</th><th scope="col">Bukti / Rekaman</th></tr></thead><tbody><tr><td>Pengesahan</td><td>Berlaku resmi setelah disetujui dan ditandatangani pejabat berwenang.</td><td>Ketua Program Studi</td><td>Lembar Pengesahan</td></tr><tr><td>Identifikasi</td><td>Memiliki nomor dokumen resmi, tanggal berlaku, dan status revisi.</td><td>Laboran</td><td>Daftar Dokumen Terkendali</td></tr><tr><td>Distribusi</td><td>Dokumen aktif diakses via sistem resmi. Salinan cetak diberi stempel &#x27;Tidak Terkendali&#x27;.</td><td>Laboran</td><td>Daftar Distribusi Dokumen</td></tr><tr><td>Perubahan / Revisi</td><td>Usulan revisi ditinjau, disetujui, dan dicatat riwayat perubahannya.</td><td>Kepala Laboratorium</td><td>Formulir Riwayat Revisi</td></tr><tr><td>Peninjauan Berkala</td><td>Ditinjau ulang minimal 1 kali sebulan/setahun atau jika ada perubahan proses.</td><td>Kepala Laboratorium</td><td>Formulir Review Dokumen</td></tr><tr><td>Pengarsipan</td><td>Dokumen versi lama ditarik dari peredaran dan disimpan dalam arsip khusus.</td><td>Laboran</td><td>Arsip Dokumen Inaktif</td></tr></tbody></table></div>
+        <p class="sop-source">Sumber: halaman 5–6 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=5" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-bab-3">
+      <summary><span class="sop-chapter-label">BAB III</span><span>Prosedur Penggunaan Laboratorium</span></summary>
+      <div class="sop-chapter-body"><h3>3.1 Jam Operasional &amp; Akses</h3>
+<p>Laboratorium beroperasi resmi pada hari kerja kampus, yaitu Senin sampai Jumat, pukul 08.00 – 16.00 WIB. Penggunaan di luar jam operasional wajib mengantongi izin tertulis dari Kepala Laboratorium.</p>
+<h3>3.2 Batas Waktu Pengajuan Kegiatan</h3>
+<p>Agar penjadwalan berjalan tertib, pengajuan penggunaan laboratorium dan alat wajib dilakukan sesuai</p>
+<h4>batas waktu minimal berikut</h4>
+<div class="sop-table-wrap" tabindex="0" role="region" aria-label="Batas minimal pengajuan resmi"><table><caption>Batas minimal pengajuan resmi</caption><thead><tr><th scope="col">Jenis kegiatan laboratorium</th><th scope="col">Batas minimal pengajuan resmi</th></tr></thead><tbody><tr><td>Pembelajaran Reguler / Kuliah Praktik</td><td>Minimal H-2 Hari Kerja</td></tr><tr><td>Praktikum Reguler Mahasiswa</td><td>Minimal H-3 Hari Kerja</td></tr><tr><td>Praktikum Skala Besar / Alat Kompleks</td><td>Minimal H-5 Hari Kerja</td></tr><tr><td>Demonstrasi Alat Sederhana</td><td>Minimal H-2 Hari Kerja</td></tr><tr><td>Demonstrasi Alat Kompleks / Khusus</td><td>Minimal H-5 Hari Kerja</td></tr><tr><td>Penelitian Mandiri / Tugas Akhir Mahasiswa</td><td>Minimal H-3 Hari Kerja</td></tr><tr><td>Kegiatan Pengguna Eksternal Standar</td><td>Minimal H-7 Hari Kerja</td></tr><tr><td>Kegiatan Pengguna Eksternal Kompleks</td><td>Minimal H-14 Hari Kerja</td></tr></tbody></table></div>
+<h3>3.3 Ketentuan dan Prosedur Peminjaman Alat</h3>
+<div class="sop-rule"><span class="sop-rule-number">3.3.1</span><p>Peminjaman Internal: Mengisi Formulir Peminjaman Alat yang telah disetujui Dosen Pembimbing/PJ. Alat praktikum harian dikembalikan pada hari yang sama, sedangkan untuk penelitian Tugas Akhir batas peminjaman maksimal adalah 7 hari kalender.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.3.2</span><p>Peminjaman Unit Lain: Wajib menunjuk dosen atau staf penanggung jawab dari unitnya sebagai kontak utama dan menandatangani lembar kesanggupan mematuhi K3.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.3.3</span><p>Peminjaman Eksternal: Melampirkan surat permohonan resmi instansi asal, perjanjian kerja sama (MOU/MOA), serta menyelesaikan biaya administrasi sewa alat sesuai ketentuan institusi.</p></div>
+<h3>3.4 Prosedur Perpanjangan &amp; Pengembalian Alat</h3>
+<p>Permohonan perpanjangan peminjaman diajukan paling lambat 1 hari kerja sebelum batas waktu berakhir (H-1). Perpanjangan dapat disetujui maksimal 14 hari kalender selama alat tidak dibutuhkan oleh jadwal lain. Saat pengembalian, laboran akan melakukan verifikasi langsung terhadap jumlah, kebersihan, dan fungsi alat.</p>
+<h3>3.5 Keterlambatan dan Sanksi Administrasi</h3>
+<p>Keterlambatan pengembalian alat tanpa pemberitahuan resmi akan dikenakan sanksi bertahap sebagai</p>
+<h4>berikut</h4>
+<div class="sop-table-wrap" tabindex="0" role="region" aria-label="Keterlambatan dan sanksi administrasi"><table><caption>Keterlambatan dan sanksi administrasi</caption><thead><tr><th scope="col">Lama keterlambatan</th><th scope="col">Tindakan / Sanksi administrasi</th></tr></thead><tbody><tr><td>Keterlambatan 1 Hari</td><td>Teguran lisan dan pencatatan dalam rekam jejak peminjam.</td></tr><tr><td>Keterlambatan 2–3 Hari</td><td>Surat peringatan tertulis dan penangguhan hak pinjam selama 3 hari kerja.</td></tr><tr><td>Keterlambatan 4–7 Hari</td><td>Penangguhan hak peminjaman alat selama 7 hari kerja.</td></tr><tr><td>Lebih dari 7 Hari</td><td>Penangguhan hak peminjaman sampai alat dikembalikan &amp; klarifikasi selesai.</td></tr><tr><td>Pelanggaran Berulang</td><td>Pelaporan resmi kepada Pimpinan Unit/Ketua Prodi dan pembatasan akses laboratorium.</td></tr></tbody></table></div>
+<h3>3.6 Tata Tertib, Etika, dan Prioritas Layanan</h3>
+<h4>Tata Tertib Etika</h4>
+<div class="sop-rule"><span class="sop-rule-number">3.6.1</span><p>Dilarang membawa makanan dan minuman ke dalam area eksperimen.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.2</span><p>Dilarang keras merokok maupun menggunakan rokok elektronik (vape).</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.3</span><p>Wajib menjaga ketenangan, ketertiban, dan kebersihan area kerja.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.4</span><p>Tas dan barang pribadi wajib disimpan di dalam loker yang disediakan.</p></div>
+<h4>Prioritas Layanan Laboratorium</h4>
+<div class="sop-rule"><span class="sop-rule-number">3.6.5</span><p>Praktikum &amp; Pembelajaran Kurikuler Reguler</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.6</span><p>Penelitian Tugas Akhir Mahasiswa Internal</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.7</span><p>Kegiatan Demonstrasi Akademis</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.8</span><p>Pembelajaran &amp; Praktikum Unit Lain di UKSW</p></div>
+<div class="sop-rule"><span class="sop-rule-number">3.6.9</span><p>Pemanfaatan oleh Pihak Eksternal</p></div>
+        <p class="sop-source">Sumber: halaman 7–8 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=7" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-bab-4">
+      <summary><span class="sop-chapter-label">BAB IV</span><span>Pengelolaan Peralatan dan Pemeliharaan</span></summary>
+      <div class="sop-chapter-body"><h3>4.1 Klasifikasi Risiko Kegiatan dan Peralatan</h3>
+<p>Setiap kegiatan eksperimen di laboratorium dikelompokkan ke dalam tiga tingkatan risiko:</p>
+<div class="sop-table-wrap sop-table-wide" tabindex="0" role="region" aria-label="Klasifikasi risiko kegiatan dan peralatan"><table><caption>Klasifikasi risiko kegiatan dan peralatan</caption><thead><tr><th scope="col">Tingkat risiko</th><th scope="col">Contoh kegiatan &amp; alat</th><th scope="col">Persyaratan minimum</th><th scope="col">Persetujuan &amp; rekaman</th></tr></thead><tbody><tr><td>Rendah</td><td>Praktikum/demonstrasi dasar tanpa bahaya besar.</td><td>Briefing awal, pemahaman SOP alat, APD standar.</td><td>Dosen / Laboran (Logbook Kegiatan)</td></tr><tr><td>Sedang</td><td>Rangkaian listrik, alat mekanik bergerak, laser/optik, energi tersimpan.</td><td>Risk Assessment, briefing K3, inspeksi alat, APD sesuai risiko.</td><td>Dosen PJ + Laboran (Form Penilaian Risiko)</td></tr><tr><td>Tinggi</td><td>Eksperimen tegangan/energi tinggi, bahaya mekanik berat, bahan khusus.</td><td>Risk Assessment rinci, Izin Kerja Khusus, pendampingan ahli, kesiapan darurat.</td><td>Kepala Laboratorium (Izin Kerja + Checklist K3)</td></tr></tbody></table></div>
+<h3>4.2 Pemeliharaan, Kalibrasi, dan Isolasi Alat Rusak</h3>
+<div class="sop-rule"><span class="sop-rule-number">4.2.1</span><p>Pemeliharaan Berkala: Laboran melakukan pemeriksaan rutin kondisi alat secara berkala (bulanan/semesteran) dan mencatatnya dalam Jadwal Pemeliharaan Alat.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">4.2.2</span><p>Kalibrasi Alat: Alat ukur presisi diuji dan dikalibrasi berkala secara internal/eksternal agar hasil pengukuran tetap akurat sesuai standar ISO/IEC 17025.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">4.2.3</span><p>Isolasi Alat Rusak: Alat yang rusak, tidak terkalibrasi, atau tidak layak pakai wajib diberi label berukuran jelas: &quot;RUSAK / TIDAK BOLEH DIGUNAKAN&quot; dan dipindahkan ke area karantina agar tidak terpakai secara tidak sengaja.</p></div>
+<h3>4.3 Penanganan Kerusakan dan Kehilangan Alat</h3>
+<p>Kerusakan alat wajib segera dilaporkan kepada laboran melalui Formulir Laporan Kerusakan. Pengelola akan mengecek apakah kerusakan disebabkan oleh keausan alami (wear and tear) atau kelalaian prosedur. Jika akibat kelalaian, peminjam bertanggung jawab atas perbaikan atau penggantian. Jika terjadi kehilangan, peminjam wajib membuat Laporan Kronologi Kehilangan dan mengganti unit dengan spesifikasi setara.</p>
+        <p class="sop-source">Sumber: halaman 9 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=9" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-bab-5">
+      <summary><span class="sop-chapter-label">BAB V</span><span>Keselamatan dan Kesehatan Kerja (K3) dan Keamanan</span></summary>
+      <div class="sop-chapter-body"><h3>5.1 Standar Pakaian &amp; Alat Pelindung Diri (APD)</h3>
+<div class="sop-rule"><span class="sop-rule-number">5.1.1</span><p>Pakaian Kerja: Gunakan pakaian rapi dan sopan (tidak terlalu longgar). Wajib menggunakan celana/rok panjang dan sepatu tertutup (sandal/selop dilarang keras). Rambut panjang wajib diikat rapi, serta perhiasan atau aksesori menjuntai harus dilepas.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">5.1.2</span><p>Jas Laboratorium: Wajib mengenakan jas laboratorium standar lengan panjang selama bekerja di ruang eksperimen.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">5.1.3</span><p>APD Khusus: Wajib memakai kacamata pelindung (safety goggles), sarung tangan, atau pelindung pendengaran sesuai dengan tingkat potensi bahaya eksperimen (laser, listrik tegangan tinggi, atau bahan kimia).</p></div>
+<h3>5.2 Safety Briefing &amp; Prosedur Tanggap Darurat</h3>
+<p>Sebelum kegiatan berisiko sedang atau tinggi dimulai, Dosen PJ atau laboran wajib memberikan safety briefing. Jika terjadi keadaan darurat (kebakaran, sengatan listrik, tumpahan bahan, atau cedera):</p>
+<div class="sop-rule"><span class="sop-rule-number">5.2.1</span><p>Segera hentikan seluruh eksperimen dan tekan sakelar utama listrik (Emergency Power Cut-Off).</p></div>
+<div class="sop-rule"><span class="sop-rule-number">5.2.2</span><p>Segera hubungi Petugas Tanggap Darurat K3 Laboratorium / Kampus.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">5.2.3</span><p>Lakukan evakuasi secara tenang mengikuti petunjuk arah menuju Titik Kumpul (Assembly Point) yang ditetapkan.</p></div>
+<h3>5.3 Penutupan Harian &amp; Keamanan Area Kerja</h3>
+<p>Di akhir jam kerja, laboran bersama pengguna wajib memastikan meja kerja bersih, merapikan kabel, mematikan aliran listrik/air/gas, mengunci pintu dan jendela, serta mengisi Checklist Penutupan Harian Laboratorium.</p>
+        <p class="sop-source">Sumber: halaman 10 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=10" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-bab-6">
+      <summary><span class="sop-chapter-label">BAB VI</span><span>Penjaminan Mutu, Evaluasi, dan Audit</span></summary>
+      <div class="sop-chapter-body"><h3>6.1 Matriks Kesesuaian Standar ISO</h3>
+<p>Pelaksanaan operasional laboratorium diselaraskan dengan klausul standar ISO melalui pemetaan</p>
+<h4>berikut</h4>
+<div class="sop-table-wrap sop-table-wide" tabindex="0" role="region" aria-label="Matriks kesesuaian standar ISO"><table><caption>Matriks kesesuaian standar ISO</caption><thead><tr><th scope="col">Area operasional SOP</th><th scope="col">Klausul ISO 9001:2015</th><th scope="col">Klausul ISO 45001:2018</th><th scope="col">Bukti / Rekaman mutu</th></tr></thead><tbody><tr><td>Pengendalian Dokumen</td><td>Informasi Terdokumentasi (7.5)</td><td>Informasi Terdokumentasi (7.5)</td><td>Daftar induk dokumen, revisi</td></tr><tr><td>Kompetensi Pengguna</td><td>Kompetensi &amp; Kesadaran (7.2, 7.3)</td><td>Kompetensi &amp; Partisipasi (7.2, 5.4)</td><td>Daftar hadir briefing, sertifikat</td></tr><tr><td>Perencanaan Kegiatan</td><td>Pendekatan Proses &amp; Risiko (6.1)</td><td>Identifikasi Bahaya (6.1)</td><td>Form permohonan, Risk Assessment</td></tr><tr><td>Keselamatan Operasional</td><td>Pengendalian Proses (8.1)</td><td>Pengendalian Operasional (8.1)</td><td>Checklist keselamatan, SOP alat</td></tr><tr><td>Insiden &amp; Kerusakan</td><td>Ketidaksesuaian (10.2)</td><td>Insiden &amp; Action Plan (10.2)</td><td>Laporan insiden K3, CAPA</td></tr><tr><td>Evaluasi Kinerja</td><td>Pemantauan &amp; Analisis (9.1)</td><td>Evaluasi Kinerja K3 (9.1)</td><td>KPI, laporan inspeksi rutin</td></tr><tr><td>Peningkatan Mutu</td><td>Continual Improvement (10.3)</td><td>Continual Improvement (10.3)</td><td>Rencana perbaikan &amp; bukti efektivitas</td></tr></tbody></table></div>
+<h3>6.2 Pengendalian Ketidaksesuaian &amp; CAPA</h3>
+<p>Setiap penyimpangan prosedur, insiden K3, atau kendala operasional wajib dicatat dalam Formulir Corrective and Preventive Action (CAPA). Pengelola akan melakukan analisis akar masalah (Root Cause Analysis) serta menentukan tindakan perbaikan beserta batas waktu penyelesaiannya.</p>
+<h3>6.3 Pemantauan, Audit Internal, &amp; Rapat Tinjauan Manajemen</h3>
+<div class="sop-rule"><span class="sop-rule-number">6.3.1</span><p>Audit Internal: Dilakukan sekurang-kurangnya 1 (satu) kali dalam satu semester untuk mengukur tingkat kepatuhan terhadap SOP dan standar ISO.</p></div>
+<div class="sop-rule"><span class="sop-rule-number">6.3.2</span><p>Rapat Tinjauan Manajemen (RTM): Diselenggarakan oleh Kepala Laboratorium minimal 1 kali per tahun untuk mengevaluasi hasil audit, masukan pengguna, pencapaian Indikator Kinerja Utama (KPI), serta menyusun target mutu periode berikutnya.</p></div>
+        <p class="sop-source">Sumber: halaman 11 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=11" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-lampiran">
+      <summary><span class="sop-chapter-label">LAMPIRAN</span><span>Formulir dan Checklist</span></summary>
+      <div class="sop-chapter-body"><p class="sop-notice">Lampiran berikut adalah format dokumen pada SOP. Untuk mengisi atau mencetak formulir, gunakan PDF asli pada halaman 12–13.</p><h3>LAMPIRAN 1: FORMULIR PERMOHONAN PENGGUNAAN LABORATORIUM</h3>
+<div class="sop-table-wrap" tabindex="0" role="region" aria-label="Lampiran 1 — Formulir permohonan penggunaan laboratorium"><table><caption>Lampiran 1 — Formulir permohonan penggunaan laboratorium</caption><thead><tr><th scope="col">Item parameter</th><th scope="col">Isi isian form</th></tr></thead><tbody><tr><td>Nama Pemohon</td><td>____________________________</td></tr><tr><td>NIP / NIM / NIK</td><td>____________________________</td></tr><tr><td>Status Pemohon</td><td>☐ Dosen   ☐ Mahasiswa   ☐ Tendik   ☐ Eksternal</td></tr><tr><td>Unit / Instansi Asal</td><td>____________________________</td></tr><tr><td>Nama &amp; Tujuan Kegiatan</td><td>____________________________</td></tr><tr><td>Tanggal &amp; Waktu Kegiatan</td><td>Tanggal: __________  Jam: ______ s.d. ______</td></tr><tr><td>Dosen / PJ Kegiatan</td><td>____________________________</td></tr></tbody></table></div>
+<h3>LAMPIRAN 2: FORMULIR PEMINJAMAN DAN PENGEMBALIAN ALAT</h3>
+<div class="sop-table-wrap sop-table-wide" tabindex="0" role="region" aria-label="Lampiran 2 — Formulir peminjaman dan pengembalian alat"><table><caption>Lampiran 2 — Formulir peminjaman dan pengembalian alat</caption><thead><tr><th scope="col">No</th><th scope="col">Nama Alat / Spesifikasi</th><th scope="col">No. Inventaris</th><th scope="col">Qty</th><th scope="col">Tgl Pinjam</th><th scope="col">Tgl Kembali</th><th scope="col">Paraf</th></tr></thead><tbody><tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div>
+<h3>LAMPIRAN 3: FORMULIR LAPORAN KERUSAKAN / KEHILANGAN ALAT</h3>
+<div class="sop-table-wrap" tabindex="0" role="region" aria-label="Lampiran 3 — Formulir laporan kerusakan / kehilangan alat"><table><caption>Lampiran 3 — Formulir laporan kerusakan / kehilangan alat</caption><thead><tr><th scope="col">Item parameter</th><th scope="col">Isi isian form</th></tr></thead><tbody><tr><td>Nama Pelapor / Pengguna</td><td>____________________________</td></tr><tr><td>Nama &amp; No. Inventaris Alat</td><td>____________________________</td></tr><tr><td>Jenis Kejadian</td><td>☐ Kerusakan Fisik   ☐ Gangguan Fungsi   ☐ Kehilangan</td></tr><tr><td>Kronologi Ringkas Kejadian</td><td>____________________________</td></tr></tbody></table></div>
+<h3>LAMPIRAN 4: CHECKLIST PENUTUPAN LABORATORIUM (HARIAN)</h3>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Seluruh eksperimen dan kegiatan praktikum telah dihentikan secara aman.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Semua instrumen, sumber listrik utama, dan catu daya telah dimatikan (OFF).</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Keran air, tabung gas, dan saluran pendukung telah ditutup rapat.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Peralatan telah dibersihkan dan dikembalikan ke lokasi penyimpanan semula.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Kabel, konektor, dan aksesori pendukung telah digulung dan dirapikan.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Meja kerja eksperimen dan area sekitar telah dibersihkan.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Sampah eksperimen dan limbah kerja telah dibuang pada tempatnya.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Tidak ada barang pribadi atau peralatan terlarang yang tertinggal.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Pintu, jendela, dan ventilasi telah terkunci secara aman.</p></div>
+<div class="sop-rule"><span aria-hidden="true">☐</span><p>Ruang laboratorium berada dalam kondisi aman dan siap digunakan kembali.</p></div>
+        <p class="sop-source">Sumber: halaman 12–13 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=12" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details><details class="sop-chapter" id="sop-pengesahan">
+      <summary><span class="sop-chapter-label">PENGESAHAN</span><span>Lembar Pengesahan Dokumen</span></summary>
+      <div class="sop-chapter-body"><p>Dokumen Standar Operasional Prosedur (SOP) Pengelolaan, Penggunaan, Keselamatan, dan Tata Tertib Laboratorium Fisika dan Pendidikan Fisika FSM UKSW ini dinyatakan sah dan berlaku secara resmi sejak tanggal ditetapkan. Ditetapkan di: Salatiga | Pada Tanggal: 17 Agustus 2026</p><p class="sop-notice">Kolom nama, NIP, dan tanda tangan pada berkas sumber belum diisi. Lihat lembar pengesahan pada PDF asli.</p><h3>Disiapkan oleh</h3><div class="sop-signatures"><div><strong>Laboran / Teknisi 1</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div><div><strong>Laboran / Teknisi 2</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div><div><strong>Laboran / Teknisi 3</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div></div><h3>Mengetahui</h3><div class="sop-signatures"><div><strong>Kepala Laboratorium Fisika</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div><div><strong>Kepala Laboratorium Pendidikan Fisika</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div></div><h3>Mengesahkan</h3><div class="sop-signatures"><div><strong>Kepala Program Studi Fisika</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div><div><strong>Kepala Program Studi Pendidikan Fisika</strong><p class="sop-signature-space">___________________<br>NIP. ______________</p></div></div>
+        <p class="sop-source">Sumber: halaman 14 dokumen SOP. <a href="assets/docs/SOP_Laboratorium_Fisika_UKSW_2026_rev_final.pdf#page=14" target="_blank" rel="noopener">Lihat pada PDF asli ↗</a></p>
+      </div>
+    </details>
+          <!-- AKHIR ISI SOP -->
+          <p class="sop-empty" id="sop-empty" hidden>Tidak ada bagian yang cocok. Coba kata kunci lain atau kosongkan pencarian.</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (() => {
+      const openButton = document.getElementById("open-lab-sop");
+      const modal = document.getElementById("lab-sop-modal");
+      const search = document.getElementById("sop-search");
+      const chapters = [...modal.querySelectorAll(".sop-chapter")];
+      const navButtons = [...modal.querySelectorAll("[data-sop-target]")];
+      const results = document.getElementById("sop-results");
+      const empty = document.getElementById("sop-empty");
+      const normalize = (value) => value.toLocaleLowerCase("id-ID").replace(/\s+/g, " ").trim();
+      const contents = chapters.map((chapter) => normalize(chapter.textContent));
+      let previousOverflow = "";
+      let previousOpen = null;
+
+      const filter = () => {
+        const query = normalize(search.value);
+        if (query && !previousOpen) previousOpen = chapters.map((chapter) => chapter.open);
+        let count = 0;
+        chapters.forEach((chapter, index) => {
+          const matches = !query || contents[index].includes(query);
+          chapter.hidden = !matches;
+          navButtons[index].hidden = !matches;
+          if (query) chapter.open = matches;
+          else if (previousOpen) chapter.open = previousOpen[index];
+          if (matches) count++;
+        });
+        if (!query) previousOpen = null;
+        empty.hidden = count !== 0;
+        results.textContent = query ? `${count} dari ${chapters.length} bagian cocok dengan pencarian.` : "6 bab, 4 lampiran, dan lembar pengesahan";
+      };
+      openButton.addEventListener("click", () => {
+        if (modal.open) return;
+        previousOverflow = document.documentElement.style.overflow;
+        modal.showModal();
+        document.documentElement.style.overflow = "hidden";
+      });
+      modal.addEventListener("close", () => {
+        document.documentElement.style.overflow = previousOverflow;
+        openButton.focus();
+      });
+      modal.addEventListener("click", (event) => {
+        if (event.target !== modal) return;
+        const bounds = modal.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) modal.close();
+      });
+      search.addEventListener("input", filter);
+      navButtons.forEach((button) => button.addEventListener("click", () => {
+        search.value = "";
+        filter();
+        const chapter = document.getElementById(button.dataset.sopTarget);
+        chapter.open = true;
+        chapter.scrollIntoView({ behavior: "smooth", block: "start" });
+      }));
+      document.getElementById("sop-expand").addEventListener("click", () => chapters.filter((chapter) => !chapter.hidden).forEach((chapter) => { chapter.open = true; }));
+      document.getElementById("sop-collapse").addEventListener("click", () => chapters.filter((chapter) => !chapter.hidden).forEach((chapter) => { chapter.open = false; }));
+    })();
+  </script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
 </body>
