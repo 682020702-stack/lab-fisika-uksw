@@ -97,7 +97,7 @@
     topbar.innerHTML = `
       <div class="topbar-left">
         <button class="mobile-menu" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" data-menu-toggle><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-        <div><div class="topbar-title">${currentTitle}</div><div class="topbar-kicker">Sistem Manajemen Laboratorium Fisika</div></div>
+        <div><div class="topbar-title">${currentTitle}</div><div class="topbar-kicker">Sistem Manajemen Laboratorium Fisika dan Pembelajaran Fisika</div></div>
       </div>
       <div class="topbar-right"><div class="text-right"><div class="font-semibold text-[#34433a]" data-header-name>Memuat pengguna…</div><div class="mt-1 flex justify-end gap-1.5"><span class="role-badge" data-header-role></span><span class="role-badge role-badge-user hidden" data-header-type></span></div></div><span class="avatar" data-avatar>A</span></div>`;
 
