@@ -48,7 +48,7 @@ def build_loan_receipt(loan) -> BytesIO:
                                  leftMargin=12*mm, topMargin=10*mm,
                                  bottomMargin=13*mm,
                                  title=f"Bukti Peminjaman {loan.kode_peminjaman}",
-                                 author="Laboratorium Fisika UKSW")
+                                 author="Laboratorium Fisika dan Pembelajaran Fisika UKSW")
     width = A5[0] - 24*mm
 
     def p(value, style=body):
