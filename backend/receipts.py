@@ -69,7 +69,7 @@ def build_loan_receipt(loan) -> BytesIO:
         story.append(table)
 
     logo_path = Path(__file__).resolve().parents[1] / "frontend/assets/FSM_UKSW.png"
-    header = [p("BUKTI PEMINJAMAN", title), p("Laboratorium Fisika \n dan Pembelajaran Fisika UKSW", heading),
+    header = [p("BUKTI PEMINJAMAN", title), p("Laboratorium Fisika \n dan Pembelajaran Fisika", heading),
               p("Sistem Inventaris Laboratorium", small)]
     if logo_path.is_file():
         logo = Image(str(logo_path))
