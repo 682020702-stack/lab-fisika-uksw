@@ -47,8 +47,7 @@ def build_loan_receipt(loan) -> BytesIO:
     document = SimpleDocTemplate(output, pagesize=A5, rightMargin=12*mm,
                                  leftMargin=12*mm, topMargin=10*mm,
                                  bottomMargin=13*mm,
-                                 title=f"Bukti Peminjaman {loan.kode_peminjaman}",
-                                 author="Laboratorium Fisika dan Pembelajaran Fisika UKSW")
+                                 title=f"Bukti Peminjaman {loan.kode_peminjaman}")
     width = A5[0] - 24*mm
 
     def p(value, style=body):
@@ -70,7 +69,7 @@ def build_loan_receipt(loan) -> BytesIO:
         story.append(table)
 
     logo_path = Path(__file__).resolve().parents[1] / "frontend/assets/FSM_UKSW.png"
-    header = [p("BUKTI PEMINJAMAN", title), p("Laboratorium Fisika UKSW", heading),
+    header = [p("BUKTI PEMINJAMAN", title), p("Laboratorium Fisika \n dan Pembelajaran Fisika UKSW", heading),
               p("Sistem Inventaris Laboratorium", small)]
     if logo_path.is_file():
         logo = Image(str(logo_path))
