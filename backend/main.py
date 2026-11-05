@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -14,6 +15,7 @@ from backend.database import (
     migrate_legacy_activity_logs,
     migrate_legacy_schema,
 )
+from backend.scheduler import start_return_reminder_scheduler
 from backend.rate_limiter import limiter
 from backend.seed import seed_categories, seed_test_users
 from backend.routers.aktivitas import router as aktivitas_router
@@ -35,7 +37,14 @@ async def lifespan(_app: FastAPI):
     seed_test_users()
     seed_categories()
     migrate_legacy_activity_logs()
-    yield
+    scheduler = None
+    if os.getenv("ENVIRONMENT", "").strip().casefold() != "development":
+        scheduler = start_return_reminder_scheduler()
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
 
 
 app = FastAPI(

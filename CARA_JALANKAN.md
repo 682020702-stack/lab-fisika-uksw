@@ -59,6 +59,7 @@ LANGKAH-LANGKAH:
    - SMTP_FROM_EMAIL (alamat pengirim)
    - VERIFICATION_BASE_URL (default: http://127.0.0.1:8081/verify.html)
    - RESET_PASSWORD_BASE_URL (default: http://127.0.0.1:8081/reset-password.html)
+   - SCHEDULER_TIMEZONE (default: Asia/Jakarta)
 
    Untuk Gmail, gunakan App Password, bukan password akun utama. Jika variabel
    SMTP belum diatur, pendaftaran akan ditolak dan backend melaporkan bahwa
@@ -69,6 +70,18 @@ LANGKAH-LANGKAH:
    sekali. Untuk pengujian lokal, gunakan inbox Mailtrap dan pastikan URL reset
    di atas mengarah ke frontend yang sedang dijalankan. Ganti nilai placeholder
    SMTP di file `.env` dengan kredensial inbox Mailtrap sebelum tes.
+
+   Scheduler pengingat berjalan setiap hari pukul 08:00 pada zona waktu di
+   `SCHEDULER_TIMEZONE`, kecuali `ENVIRONMENT=development`. Untuk menjalankan
+   pemeriksaan secara manual dari folder proyek, gunakan:
+
+   `python -m backend.scheduler`
+
+   Perintah tersebut memproses tanggal hari ini, menyimpan notifikasi in-app,
+   dan mencoba mengirim email sungguhan. Pastikan SMTP telah dikonfigurasi dan
+   gunakan data peminjaman uji dengan status `Disetujui`, tanggal kembali besok
+   atau yang sudah lewat. Pengingat yang sama tidak dikirim ulang pada hari
+   yang sama. Email yang gagal dicatat di log; notifikasi in-app tetap tersimpan.
 
    Skema database lama akan dimigrasikan otomatis saat backend dijalankan.
    Riwayat peminjaman lama disalin ke detail barang sebelum kolom barang dan
@@ -86,6 +99,33 @@ LANGKAH-LANGKAH:
    environment service Render ke connection string PostgreSQL Neon. Aplikasi
    dan script admin akan menggunakan database tersebut; script menolak berjalan
    pada SQLite jika `ENVIRONMENT=production`.
+
+   Untuk menyalin data SQLite lokal ke Neon:
+   - Simpan connection string Neon sebagai `DATABASE_URL` di file `.env` pada
+     folder proyek, atau atur environment variable tersebut di terminal.
+   - Pastikan `.env` tidak dibagikan atau dimasukkan ke Git.
+   - Dari folder proyek, jalankan `python backend\migrate_to_neon.py`.
+   - Script membuat tabel yang belum ada dan menyalin data secara berurutan.
+     Baris identik yang sudah ada dilewati; konflik dan pelanggaran foreign key
+     dilaporkan dan menyebabkan exit code gagal agar dapat diperbaiki sebelum
+     script dijalankan kembali.
+   - File `backend\laboratorium.db` tidak diubah atau dihapus. Simpan file itu
+     sampai hasil migrasi dan aplikasi di Neon sudah diverifikasi.
+
+   Untuk membuat backup SQL mandiri dari Neon:
+   - Pastikan `DATABASE_URL` di `.env` menunjuk ke Neon.
+   - Dari folder proyek, jalankan `python backend\backup_neon.py`.
+   - Script memakai engine SQLAlchemy aplikasi untuk membaca data, jadi tidak
+     memerlukan `pg_dump` atau instalasi PostgreSQL Client.
+   - Script menulis `INSERT` untuk tabel users, kategori_barang, barang,
+     peminjaman, detail_peminjaman, log_aktivitas, dan notifikasi. File dibuat
+     di folder `backup\` dengan nama `backup_neon_YYYY-MM-DD_HH-MM-SS.sql`;
+     hasil backup tanpa baris data tidak akan disimpan.
+   - Untuk memulihkan backup, jalankan file SQL pada database dengan skema
+     aplikasi yang sama. Jalankan pada database kosong agar tidak terjadi
+     konflik primary key.
+   - Upload file tersebut ke Google Drive setelah memastikan pesan backup
+     berhasil dan jumlah baris lebih dari nol.
 
    Untuk membuat Admin pertama secara manual di Render:
    - Pastikan `DATABASE_URL` service Render sudah menunjuk ke database Neon

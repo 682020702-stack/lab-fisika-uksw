@@ -6,7 +6,6 @@ from urllib.parse import urlencode
 
 from dotenv import load_dotenv
 
-
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
@@ -74,7 +73,32 @@ def send_password_reset_email(email_to: str, nama: str, token: str) -> None:
         "plain",
         "utf-8",
     )
-    message["Subject"] = "Reset Password Sistem Laboratorium Fisika"
+    message["Subject"] = "Reset Password Laboratorium Fisika dan Pembelajaran Fisika"
+    message["From"] = sender
+    message["To"] = email_to
+
+    with smtplib.SMTP(host, port, timeout=15) as smtp:
+        smtp.starttls()
+        smtp.login(username, password)
+        smtp.send_message(message)
+
+
+def send_return_reminder_email(
+    email_to: str, nama: str, pesan: str, subject: str
+) -> None:
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    username = os.getenv("SMTP_USERNAME", "")
+    password = os.getenv("SMTP_PASSWORD", "")
+    sender = os.getenv("SMTP_FROM_EMAIL", username)
+
+    if not username or not password or not sender:
+        raise SMTPConfigurationError(
+            "Set SMTP_USERNAME, SMTP_PASSWORD, dan SMTP_FROM_EMAIL sebelum mengirim email."
+        )
+
+    message = MIMEText(f"Halo {nama},\n\n{pesan}", "plain", "utf-8")
+    message["Subject"] = subject
     message["From"] = sender
     message["To"] = email_to
 

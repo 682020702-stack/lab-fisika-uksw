@@ -5,8 +5,10 @@ from pathlib import Path
 from sqlalchemy import URL, create_engine, event, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from dotenv import load_dotenv
 
 DATABASE_PATH = Path(__file__).resolve().parent / "laboratorium.db"
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 configured_database_url = os.getenv("DATABASE_URL")
 if configured_database_url:
     DATABASE_URL = make_url(configured_database_url)
@@ -22,6 +24,7 @@ engine = create_engine(DATABASE_URL, **engine_options)
 
 
 if engine.dialect.name == "sqlite":
+
     @event.listens_for(engine, "connect")
     def enable_sqlite_foreign_keys(connection, _record):
         connection.execute("PRAGMA foreign_keys=ON")
@@ -74,7 +77,9 @@ def migrate_legacy_schema() -> None:
             )
 
     if "peminjaman" in table_names:
-        loan_columns = {column["name"] for column in inspector.get_columns("peminjaman")}
+        loan_columns = {
+            column["name"] for column in inspector.get_columns("peminjaman")
+        }
         legacy_item_columns = {"barang_id", "jumlah"} & loan_columns
         if legacy_item_columns and legacy_item_columns != {"barang_id", "jumlah"}:
             raise RuntimeError(
@@ -209,25 +214,31 @@ def migrate_legacy_schema() -> None:
                 )
             )
             if legacy_item_columns and engine.dialect.name != "sqlite":
-                connection.execute(
-                    text("ALTER TABLE peminjaman DROP COLUMN barang_id")
-                )
+                connection.execute(text("ALTER TABLE peminjaman DROP COLUMN barang_id"))
                 connection.execute(text("ALTER TABLE peminjaman DROP COLUMN jumlah"))
             if legacy_item_columns and engine.dialect.name == "sqlite":
-                indexes = connection.execute(
-                    text(
-                        "SELECT sql FROM sqlite_master "
-                        "WHERE type = 'index' AND tbl_name = 'peminjaman' "
-                        "AND sql IS NOT NULL"
+                indexes = (
+                    connection.execute(
+                        text(
+                            "SELECT sql FROM sqlite_master "
+                            "WHERE type = 'index' AND tbl_name = 'peminjaman' "
+                            "AND sql IS NOT NULL"
+                        )
                     )
-                ).scalars().all()
-                triggers = connection.execute(
-                    text(
-                        "SELECT sql FROM sqlite_master "
-                        "WHERE type = 'trigger' AND tbl_name = 'peminjaman' "
-                        "AND sql IS NOT NULL"
+                    .scalars()
+                    .all()
+                )
+                triggers = (
+                    connection.execute(
+                        text(
+                            "SELECT sql FROM sqlite_master "
+                            "WHERE type = 'trigger' AND tbl_name = 'peminjaman' "
+                            "AND sql IS NOT NULL"
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 connection.execute(
                     text(
                         "CREATE TEMP TABLE _detail_peminjaman_migration_backup "
@@ -273,9 +284,7 @@ def migrate_legacy_schema() -> None:
                 connection.execute(
                     text("ALTER TABLE peminjaman_new RENAME TO peminjaman")
                 )
-                connection.execute(
-                    text(detail_table_ddl.replace(" IF NOT EXISTS", ""))
-                )
+                connection.execute(text(detail_table_ddl.replace(" IF NOT EXISTS", "")))
                 connection.execute(
                     text(
                         "INSERT INTO detail_peminjaman "
@@ -312,7 +321,7 @@ def migrate_legacy_schema() -> None:
         if "tahun_pengadaan" not in barang_columns:
             with engine.begin() as connection:
                 connection.execute(
-            text("ALTER TABLE barang ADD COLUMN tahun_pengadaan INTEGER")
+                    text("ALTER TABLE barang ADD COLUMN tahun_pengadaan INTEGER")
                 )
 
     if "log_aktivitas" not in table_names:
