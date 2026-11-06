@@ -18,12 +18,18 @@ SCHEDULER_TIMEZONE = os.getenv("SCHEDULER_TIMEZONE", "Asia/Jakarta")
 def send_return_reminders(today: date | None = None) -> int:
     reminder_date = today or datetime.now(ZoneInfo(SCHEDULER_TIMEZONE)).date()
     local_timezone = ZoneInfo(SCHEDULER_TIMEZONE)
-    day_start = datetime.combine(
-        reminder_date, time.min, tzinfo=local_timezone
-    ).astimezone(timezone.utc).replace(tzinfo=None)
-    next_day = datetime.combine(
-        reminder_date + timedelta(days=1), time.min, tzinfo=local_timezone
-    ).astimezone(timezone.utc).replace(tzinfo=None)
+    day_start = (
+        datetime.combine(reminder_date, time.min, tzinfo=local_timezone)
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
+    next_day = (
+        datetime.combine(
+            reminder_date + timedelta(days=1), time.min, tzinfo=local_timezone
+        )
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
     sent_count = 0
 
     with SessionLocal() as db:
