@@ -127,16 +127,16 @@ LANGKAH-LANGKAH:
    - Upload file tersebut ke Google Drive setelah memastikan pesan backup
      berhasil dan jumlah baris lebih dari nol.
 
-   Untuk membuat Admin pertama secara manual di Render:
+   Untuk membuat akun Admin melalui CLI:
    - Pastikan `DATABASE_URL` service Render sudah menunjuk ke database Neon
      production dan `ENVIRONMENT=production`.
-   - Buka Shell service Render, lalu jalankan dari folder proyek (yang berisi
-     folder `backend`): `python -m backend.create_admin`
-   - Isi username, nama lengkap, email, dan password pada prompt. Password
-     diminta secara tersembunyi; konfirmasi pembuatan dengan mengetik `buat`.
-   - Script hanya membuat Admin pertama. Jika Admin sudah ada, script akan
-     berhenti tanpa membuat akun tambahan. Jangan menaruh password di source
-     code atau command line.
+   - Dari folder proyek, jalankan `python -m backend.create_admin
+     --username USERNAME --nama-lengkap "NAMA LENGKAP" --email EMAIL`.
+   - Password akan diminta secara tersembunyi. Alternatifnya, berikan
+     `--password PASSWORD`, tetapi password pada command line dapat tersimpan
+     di riwayat shell dan terlihat oleh proses lain.
+   - Konfirmasi pembuatan dengan mengetik `buat`; `--yes` dapat digunakan untuk
+     melewati konfirmasi. Username atau email yang sudah ada akan ditolak.
 
 8. LOGIN
    - Admin:      username=admin       password=admin123

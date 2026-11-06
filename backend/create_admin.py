@@ -1,6 +1,8 @@
+import argparse
 import getpass
 import os
 import sys
+from collections.abc import Sequence
 
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +13,22 @@ from backend.models import User
 from backend.schemas import UserCreate
 
 
-def create_admin() -> None:
+def create_admin(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Buat akun Admin.")
+    parser.add_argument("--username", required=True)
+    parser.add_argument("--nama-lengkap", required=True)
+    parser.add_argument("--email", required=True)
+    parser.add_argument(
+        "--password",
+        help="Password akun (lebih aman jika tidak diberikan agar diminta tersembunyi).",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Lewati konfirmasi pembuatan akun.",
+    )
+    args = parser.parse_args(argv)
+
     if (
         os.getenv("ENVIRONMENT", "").casefold() == "production"
         and engine.dialect.name == "sqlite"
@@ -22,20 +39,19 @@ def create_admin() -> None:
         )
 
     print(f"Target database: {engine.dialect.name}")
-    username = input("Username Admin: ").strip()
-    nama_lengkap = input("Nama lengkap: ").strip()
-    email = input("Email: ").strip()
-    password = getpass.getpass("Password (minimal 8 karakter): ")
-    password_confirmation = getpass.getpass("Ulangi password: ")
-    if password != password_confirmation:
-        raise ValueError("Password tidak sama.")
+    password = args.password
+    if password is None:
+        password = getpass.getpass("Password (minimal 8 karakter): ")
+        password_confirmation = getpass.getpass("Ulangi password: ")
+        if password != password_confirmation:
+            raise ValueError("Password tidak sama.")
 
     try:
         payload = UserCreate(
-            username=username,
+            username=args.username.strip(),
             password=password,
-            nama_lengkap=nama_lengkap,
-            email=email,
+            nama_lengkap=args.nama_lengkap.strip(),
+            email=args.email.strip(),
             role="Admin",
             tipe_user=None,
             status="Aktif",
@@ -46,20 +62,17 @@ def create_admin() -> None:
             "dan panjang password."
         ) from exc
 
-    confirmation = input(
-        f"Ketik 'buat' untuk membuat akun Admin '{payload.username}': "
-    ).strip()
-    if confirmation.casefold() != "buat":
-        print("Pembuatan Admin dibatalkan.")
-        return
+    if not args.yes:
+        confirmation = input(
+            f"Ketik 'buat' untuk membuat akun Admin '{payload.username}': "
+        ).strip()
+        if confirmation.casefold() != "buat":
+            print("Pembuatan Admin dibatalkan.")
+            return
 
     migrate_legacy_schema()
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        if db.query(User).filter(User.role == "Admin").first():
-            raise RuntimeError(
-                "Akun Admin sudah ada; script hanya membuat Admin pertama."
-            )
         if (
             db.query(User)
             .filter(

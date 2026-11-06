@@ -31,7 +31,7 @@
       try {
         const data = Object.fromEntries(new FormData(form).entries());
         await api.apiFetch("/register-public", { method: "POST", body: data });
-        window.alert("Registrasi berhasil! Cek email Anda untuk verifikasi.");
+        window.alert("Pendaftaran berhasil. Silakan login.");
         form.reset();
         location.replace("index.html");
       } catch (error) {

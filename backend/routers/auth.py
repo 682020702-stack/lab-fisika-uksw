@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from backend.email_utils import (
     SMTPConfigurationError,
     send_password_reset_email,
-    send_verification_email,
 )
 from backend.auth import (
     create_access_token,
@@ -245,8 +244,6 @@ def register_public(
             detail="Username atau email sudah terdaftar",
         )
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    token = secrets.token_urlsafe(32)
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),
@@ -256,9 +253,7 @@ def register_public(
         role="User",
         tipe_user=payload.tipe_user,
         status="Aktif",
-        is_verified=False,
-        verification_token=token,
-        verification_token_expires=now + timedelta(hours=24),
+        is_verified=True,
     )
     db.add(user)
     try:
@@ -271,15 +266,6 @@ def register_public(
         ) from exc
 
     try:
-        send_verification_email(user.email, user.nama_lengkap, token)
-    except (OSError, SMTPException, SMTPConfigurationError) as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email verifikasi gagal dikirim. Periksa konfigurasi SMTP dan coba lagi.",
-        ) from exc
-
-    try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -287,7 +273,7 @@ def register_public(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username atau email sudah terdaftar",
         ) from exc
-    return {"message": "Registrasi berhasil. Silakan cek email untuk verifikasi."}
+    return {"message": "Pendaftaran berhasil. Silakan login."}
 
 
 @router.get("/verify-email")
