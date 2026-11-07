@@ -649,15 +649,16 @@
         const button = event.currentTarget;
         button.disabled = true;
         try {
-          const blob = await apiFetch("/barang/template-excel", { responseType: "blob" });
+          const blob = await apiFetch("/barang/export/excel", { responseType: "blob" });
           const url = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = url;
-          link.download = "template-barang.xlsx";
+          link.download = "data-barang.xlsx";
           document.body.append(link);
           link.click();
           link.remove();
           window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          window.showToast("Data barang berhasil diekspor.");
         } catch (error) {
           showFailure(error);
         } finally {

@@ -15,10 +15,11 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from backend.auth import get_admin_user, get_current_user
 from backend.database import get_db
@@ -47,6 +48,25 @@ EXCEL_HEADER_ALIASES = {
     "tahun_pengadaan": {"tahun", "tahunpengadaan", "thn"},
 }
 REQUIRED_EXCEL_COLUMNS = set(EXCEL_HEADER_ALIASES) - {"tahun_pengadaan"}
+
+
+def _query_barang(
+    db: Session,
+    kategori_id: int | None = None,
+    laboratorium: str | None = None,
+    search: str | None = None,
+) -> list[Barang]:
+    query = db.query(Barang).options(joinedload(Barang.kategori))
+    if kategori_id is not None:
+        query = query.filter(Barang.kategori_id == kategori_id)
+    if laboratorium:
+        query = query.filter(Barang.laboratorium.ilike(f"%{laboratorium.strip()}%"))
+    if search:
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(Barang.kode_barang.ilike(term), Barang.nama_barang.ilike(term))
+        )
+    return query.order_by(Barang.id).all()
 
 
 def _cell_text(value: object) -> str:
@@ -117,17 +137,7 @@ def list_barang(
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ) -> list[Barang]:
-    query = db.query(Barang)
-    if kategori_id is not None:
-        query = query.filter(Barang.kategori_id == kategori_id)
-    if laboratorium:
-        query = query.filter(Barang.laboratorium.ilike(f"%{laboratorium.strip()}%"))
-    if search:
-        term = f"%{search.strip()}%"
-        query = query.filter(
-            or_(Barang.kode_barang.ilike(term), Barang.nama_barang.ilike(term))
-        )
-    return query.order_by(Barang.id).all()
+    return _query_barang(db, kategori_id, laboratorium, search)
 
 
 @router.get("/template-excel")
@@ -145,6 +155,47 @@ def download_template_excel(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="template-barang.xlsx"'},
+    )
+
+
+@router.get("/export/excel")
+def export_barang_excel(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+) -> StreamingResponse:
+    items = _query_barang(db)
+    if not items:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Data tidak ditemukan.",
+        )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Barang"
+    sheet.append(EXCEL_COLUMNS)
+    for item in items:
+        sheet.append(
+            [
+                item.kode_barang,
+                item.nama_barang,
+                item.kategori.nama_kategori,
+                item.laboratorium,
+                item.stok,
+                item.kondisi,
+                item.tahun_pengadaan,
+            ]
+        )
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="data-barang.xlsx"'},
     )
 
 
