@@ -106,7 +106,7 @@ class Peminjaman(Base):
     __tablename__ = "peminjaman"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('Menunggu', 'Disetujui', 'Ditolak', 'Selesai', 'Selesai - Rusak')",
+            "status IN ('Menunggu', 'Disetujui', 'Dipinjam', 'Dikembalikan', 'Ditolak')",  # FLOWCHART UPDATE: batasi nilai status ke state machine.
             name="ck_peminjaman_status",
         ),
     )

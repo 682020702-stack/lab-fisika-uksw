@@ -152,6 +152,8 @@ class PeminjamanItemCreate(BaseModel):
 
 
 class PeminjamanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # FLOWCHART UPDATE: tolak status manual dan field tak dikenal.
+
     items: list[PeminjamanItemCreate] = Field(min_length=1)
     tanggal_pinjam: datetime | None = None
     tanggal_kembali: datetime | None = Field(
@@ -189,7 +191,7 @@ class PeminjamanResponse(ORMModel):
     items: list[DetailPeminjamanResponse]
     tanggal_pinjam: datetime
     tanggal_kembali: datetime | None
-    status: Literal["Menunggu", "Disetujui", "Ditolak", "Selesai", "Selesai - Rusak"]
+    status: Literal["Menunggu", "Disetujui", "Dipinjam", "Dikembalikan", "Ditolak"]  # FLOWCHART UPDATE: respons memakai status state machine baru.
     keterangan: str | None
     kondisi_kembali: str | None
     jumlah_kembali: int | None

@@ -43,6 +43,31 @@ def _get_peminjaman(db: Session, peminjaman_id: int) -> Peminjaman:
     return peminjaman
 
 
+def _transisikan_status(
+    db: Session,
+    peminjaman: Peminjaman,
+    status_asal: str,
+    status_tujuan: str,
+) -> None:
+    # FLOWCHART UPDATE: hanya izinkan status asal yang diharapkan.
+    if peminjaman.status != status_asal:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Transaksi harus berstatus {status_asal} untuk diproses.",
+        )
+    updated = (
+        db.query(Peminjaman)
+        .filter(Peminjaman.id == peminjaman.id, Peminjaman.status == status_asal)
+        .update({Peminjaman.status: status_tujuan}, synchronize_session=False)
+    )  # FLOWCHART UPDATE: cegah transisi ganda yang bersamaan.
+    if updated != 1:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Transaksi harus berstatus {status_asal} untuk diproses.",
+        )
+    peminjaman.status = status_tujuan  # FLOWCHART UPDATE: sinkronkan status pada objek ORM.
+
+
 @router.get("", response_model=list[PeminjamanResponse])
 def list_peminjaman(
     status_transaksi: str | None = Query(default=None, alias="status", min_length=1),
@@ -145,7 +170,7 @@ def create_peminjaman(
             tanggal_pinjam=tanggal_pinjam,
             tanggal_kembali=payload.tanggal_kembali,
             keterangan=payload.keterangan,
-            status="Menunggu",
+            status="Menunggu",  # FLOWCHART UPDATE: status awal hanya ditetapkan server.
             items=[
                 DetailPeminjaman(
                     barang_id=item.barang_id,
@@ -209,6 +234,8 @@ def approve_peminjaman(
             detail=f"Stok barang tidak mencukupi: {', '.join(insufficient)}",
         )
 
+    # FLOWCHART UPDATE: persetujuan hanya mengubah Menunggu menjadi Disetujui.
+    _transisikan_status(db, peminjaman, "Menunggu", "Disetujui")
     stock_changes = []
     for item in items:
         barang = barang_by_id[item.barang_id]
@@ -218,7 +245,6 @@ def approve_peminjaman(
             f"{barang.nama_barang} {previous_stock} → {barang.stok} "
             f"({item.jumlah} unit)"
         )
-    peminjaman.status = "Disetujui"
     item_summary = ", ".join(barang_by_id[item.barang_id].nama_barang for item in items)
     log_aktivitas(
         db,
@@ -247,10 +273,8 @@ def reject_peminjaman(
     admin: User = Depends(get_admin_user),
 ) -> Peminjaman:
     peminjaman = _get_peminjaman(db, peminjaman_id)
-    if peminjaman.status != "Menunggu":
-        raise HTTPException(status_code=409, detail="Transaksi bukan pengajuan aktif")
-
-    peminjaman.status = "Ditolak"
+    # FLOWCHART UPDATE: penolakan hanya dapat dilakukan dari Menunggu.
+    _transisikan_status(db, peminjaman, "Menunggu", "Ditolak")
     item_names = ", ".join(
         item.barang.nama_barang for item in peminjaman.items
     )
@@ -273,6 +297,36 @@ def reject_peminjaman(
     return peminjaman
 
 
+# FLOWCHART UPDATE: endpoint admin untuk mencatat penyerahan barang.
+@router.put("/{peminjaman_id}/serahkan", response_model=PeminjamanResponse)
+def serahkan_peminjaman(
+    peminjaman_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+) -> Peminjaman:
+    peminjaman = _get_peminjaman(db, peminjaman_id)
+    # FLOWCHART UPDATE: penyerahan hanya mengubah Disetujui menjadi Dipinjam.
+    _transisikan_status(db, peminjaman, "Disetujui", "Dipinjam")
+    log_aktivitas(
+        db,
+        admin,
+        "Serahkan Barang",
+        "Peminjaman",
+        peminjaman.kode_peminjaman,
+        "Barang diserahkan kepada peminjam.",
+        request.client.host if request.client else None,
+    )
+    _buat_notifikasi(
+        db,
+        peminjaman.user_id,
+        f"Barang untuk peminjaman {peminjaman.kode_peminjaman} telah diserahkan.",
+    )
+    db.commit()
+    db.refresh(peminjaman)
+    return peminjaman
+
+
 @router.put("/{peminjaman_id}/return", response_model=PeminjamanResponse)
 def return_peminjaman(
     peminjaman_id: int,
@@ -282,9 +336,10 @@ def return_peminjaman(
     admin: User = Depends(get_admin_user),
 ) -> Peminjaman:
     peminjaman = _get_peminjaman(db, peminjaman_id)
-    if peminjaman.status != "Disetujui":
+    # FLOWCHART UPDATE: pengembalian hanya dapat dilakukan setelah barang Dipinjam.
+    if peminjaman.status != "Dipinjam":
         raise HTTPException(
-            status_code=409, detail="Transaksi tidak dalam status disetujui"
+            status_code=409, detail="Transaksi tidak dalam status Dipinjam"
         )
     total_dipinjam = sum(item.jumlah for item in peminjaman.items)
     if len(peminjaman.items) == 1:
@@ -333,6 +388,8 @@ def return_peminjaman(
     if len(barang_by_id) != len(barang_ids):
         raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
 
+    # FLOWCHART UPDATE: pengembalian hanya mengubah Dipinjam menjadi Dikembalikan.
+    _transisikan_status(db, peminjaman, "Dipinjam", "Dikembalikan")
     planned_date = peminjaman.tanggal_kembali.date() if peminjaman.tanggal_kembali else None
     late_days = max(0, (date.today() - planned_date).days) if planned_date else 0
     stock_changes = []
@@ -358,9 +415,6 @@ def return_peminjaman(
     peminjaman.terlambat_hari = late_days
     peminjaman.denda = 0
     peminjaman.diproses_oleh = admin.id
-    peminjaman.status = (
-        "Selesai" if payload.kondisi_kembali == "Baik" else "Selesai - Rusak"
-    )
     log_aktivitas(
         db,
         admin,

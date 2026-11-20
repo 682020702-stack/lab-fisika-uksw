@@ -80,6 +80,33 @@ def migrate_legacy_schema() -> None:
         loan_columns = {
             column["name"] for column in inspector.get_columns("peminjaman")
         }
+        # FLOWCHART UPDATE: deteksi constraint status lama yang perlu dimigrasikan.
+        status_constraint = next(
+            (
+                constraint
+                for constraint in inspector.get_check_constraints("peminjaman")
+                if constraint["name"] == "ck_peminjaman_status"
+            ),
+            None,
+        )
+        status_constraint_sql = status_constraint["sqltext"] if status_constraint else ""
+        status_constraint_needs_update = (
+            status_constraint is None
+            or not all(
+                f"'{status}'" in status_constraint_sql
+                for status in (
+                    "Menunggu",
+                    "Disetujui",
+                    "Dipinjam",
+                    "Dikembalikan",
+                    "Ditolak",
+                )
+            )
+            or any(
+                f"'{status}'" in status_constraint_sql
+                for status in ("Selesai", "Selesai - Rusak", "Sedang")
+            )
+        )
         legacy_item_columns = {"barang_id", "jumlah"} & loan_columns
         if legacy_item_columns and legacy_item_columns != {"barang_id", "jumlah"}:
             raise RuntimeError(
@@ -205,18 +232,40 @@ def migrate_legacy_schema() -> None:
                         "Migrasi detail peminjaman tidak lengkap; "
                         "kolom lama tidak dihapus."
                     )
-            connection.execute(
-                text(
-                    "UPDATE peminjaman SET status = CASE status "
-                    "WHEN 'Menunggu ACC' THEN 'Menunggu' "
-                    "WHEN 'Dipinjam' THEN 'Disetujui' "
-                    "WHEN 'Dikembalikan' THEN 'Selesai' ELSE status END"
+            if (
+                engine.dialect.name == "postgresql"
+                and status_constraint_needs_update
+            ):  # FLOWCHART UPDATE: ubah constraint sebelum memigrasikan status PostgreSQL.
+                connection.execute(
+                    text(
+                        "ALTER TABLE peminjaman "
+                        "DROP CONSTRAINT IF EXISTS ck_peminjaman_status"
+                    )
                 )
-            )
+                connection.execute(
+                    text(
+                        "UPDATE peminjaman SET status = CASE status "
+                        "WHEN 'Menunggu ACC' THEN 'Menunggu' "
+                        "WHEN 'Sedang' THEN 'Dipinjam' "
+                        "WHEN 'Selesai' THEN 'Dikembalikan' "
+                        "WHEN 'Selesai - Rusak' THEN 'Dikembalikan' "
+                        "ELSE status END"
+                    )
+                )
+                connection.execute(
+                    text(
+                        "ALTER TABLE peminjaman ADD CONSTRAINT ck_peminjaman_status "
+                        "CHECK (status IN ('Menunggu', 'Disetujui', 'Dipinjam', "
+                        "'Dikembalikan', 'Ditolak'))"
+                    )
+                )
             if legacy_item_columns and engine.dialect.name != "sqlite":
                 connection.execute(text("ALTER TABLE peminjaman DROP COLUMN barang_id"))
                 connection.execute(text("ALTER TABLE peminjaman DROP COLUMN jumlah"))
-            if legacy_item_columns and engine.dialect.name == "sqlite":
+            # FLOWCHART UPDATE: SQLite perlu rebuild karena tidak mendukung alter CHECK.
+            if engine.dialect.name == "sqlite" and (
+                legacy_item_columns or status_constraint_needs_update
+            ):
                 indexes = (
                     connection.execute(
                         text(
@@ -239,6 +288,28 @@ def migrate_legacy_schema() -> None:
                     .scalars()
                     .all()
                 )
+                detail_indexes = (
+                    connection.execute(
+                        text(
+                            "SELECT sql FROM sqlite_master "
+                            "WHERE type = 'index' AND tbl_name = 'detail_peminjaman' "
+                            "AND sql IS NOT NULL"
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )  # FLOWCHART UPDATE: simpan indeks detail agar tidak hilang saat rebuild.
+                detail_triggers = (
+                    connection.execute(
+                        text(
+                            "SELECT sql FROM sqlite_master "
+                            "WHERE type = 'trigger' AND tbl_name = 'detail_peminjaman' "
+                            "AND sql IS NOT NULL"
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )  # FLOWCHART UPDATE: simpan trigger detail agar tidak hilang saat rebuild.
                 connection.execute(
                     text(
                         "CREATE TEMP TABLE _detail_peminjaman_migration_backup "
@@ -255,8 +326,8 @@ def migrate_legacy_schema() -> None:
                         "tanggal_pinjam DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
                         "tanggal_kembali DATETIME, "
                         "status VARCHAR(50) NOT NULL CHECK (status IN "
-                        "('Menunggu', 'Disetujui', 'Ditolak', 'Selesai', "
-                        "'Selesai - Rusak')), "
+                        "('Menunggu', 'Disetujui', 'Dipinjam', 'Dikembalikan', "
+                        "'Ditolak')), "
                         "keterangan VARCHAR(1000), "
                         "kondisi_kembali VARCHAR(50), "
                         "jumlah_kembali INTEGER, "
@@ -275,7 +346,12 @@ def migrate_legacy_schema() -> None:
                         "jumlah_kembali, tanggal_kembali_aktual, catatan_admin, "
                         "terlambat_hari, denda, diproses_oleh) "
                         "SELECT id, kode_peminjaman, user_id, tanggal_pinjam, "
-                        "tanggal_kembali, status, keterangan, kondisi_kembali, "
+                        "tanggal_kembali, CASE status "
+                        "WHEN 'Menunggu ACC' THEN 'Menunggu' "
+                        "WHEN 'Sedang' THEN 'Dipinjam' "
+                        "WHEN 'Selesai' THEN 'Dikembalikan' "
+                        "WHEN 'Selesai - Rusak' THEN 'Dikembalikan' "
+                        "ELSE status END, keterangan, kondisi_kembali, "
                         "jumlah_kembali, tanggal_kembali_aktual, catatan_admin, "
                         "terlambat_hari, denda, diproses_oleh FROM peminjaman"
                     )
@@ -299,12 +375,16 @@ def migrate_legacy_schema() -> None:
                 )
                 for index_sql in indexes:
                     connection.execute(text(index_sql))
+                for index_sql in detail_indexes:
+                    connection.execute(text(index_sql))
                 connection.execute(
                     text(
                         "CREATE INDEX IF NOT EXISTS "
                         "ix_detail_peminjaman_id ON detail_peminjaman (id)"
                     )
                 )
+                for trigger_sql in detail_triggers:
+                    connection.execute(text(trigger_sql))
                 for trigger_sql in triggers:
                     connection.execute(text(trigger_sql))
                 foreign_key_errors = connection.execute(

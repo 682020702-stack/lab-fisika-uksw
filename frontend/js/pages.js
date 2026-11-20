@@ -213,7 +213,7 @@
       "user-available": items.filter((item) => item.stok > 0).length,
       "user-loans": loans.length,
       "user-pending": loans.filter((loan) => loan.status === "Menunggu").length,
-      "user-completed": loans.filter((loan) => loan.status === "Selesai" || loan.status === "Selesai - Rusak").length,
+      "user-completed": loans.filter((loan) => loan.status === "Dikembalikan").length, // # FLOWCHART UPDATE: hitung status akhir kanonis.
     };
     Object.entries(values).forEach(([key, value]) => {
       const node = document.querySelector(`[data-stat="${key}"]`);
@@ -370,11 +370,13 @@
     document.getElementById("loan-count").textContent = `${filteredLoans.length} transaksi`;
     document.getElementById("loans-body").innerHTML = filteredLoans.length ? filteredLoans.map((loan) => {
       const actions = [];
-      if (isAdmin && loan.status === "Menunggu") {
+      if (isAdmin && loan.status === "Menunggu") { // # FLOWCHART UPDATE: Setujui/Tolak hanya pada status Menunggu.
         actions.push(`<button class="btn btn-primary" type="button" data-loan-action="approve" data-loan-id="${loan.id}">Setujui</button>`);
         actions.push(`<button class="btn btn-danger" type="button" data-loan-action="reject" data-loan-id="${loan.id}">Tolak</button>`);
       } else if (isAdmin && loan.status === "Disetujui") {
-        actions.push(`<button class="btn btn-return" type="button" data-loan-action="return" data-loan-id="${loan.id}">Proses Pengembalian</button>`);
+        actions.push(`<button class="btn btn-primary" type="button" data-loan-action="handover" data-loan-id="${loan.id}">Serahkan Barang</button>`); // # FLOWCHART UPDATE: sediakan tahap serah-terima sebelum Dipinjam.
+      } else if (isAdmin && loan.status === "Dipinjam") {
+        actions.push(`<button class="btn btn-return" type="button" data-loan-action="return" data-loan-id="${loan.id}">Proses Pengembalian</button>`); // # FLOWCHART UPDATE: pengembalian hanya untuk status Dipinjam.
       }
       actions.push(`<button class="btn btn-quiet" type="button" data-loan-detail="${loan.id}">Lihat Detail</button>`);
       if (loan.status === "Disetujui") {
@@ -391,7 +393,7 @@
           ? `${itemNamesInLoan[0]} × ${loanItems[0].jumlah}`
           : "—";
       const totalQuantity = loanItems.reduce((total, detail) => total + detail.jumlah, 0);
-      const lateDays = loan.status === "Disetujui" ? lateDaysFor(loan.tanggal_kembali) : 0;
+      const lateDays = loan.status === "Dipinjam" ? lateDaysFor(loan.tanggal_kembali) : 0; // # FLOWCHART UPDATE: keterlambatan berlaku setelah serah-terima.
       const lateTag = lateDays ? `<span class="late-pill">Terlambat ${lateDays} hari</span>` : "";
       return `<tr><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`;
     }).join("") : emptyRow(8, "Belum ada transaksi pada filter ini.");
@@ -802,8 +804,8 @@
       const openReturnModal = async (loanId) => {
         const loan = await apiFetch(`/peminjaman/${loanId}`);
         const state = window.loanPageState;
-        if (!state?.isAdmin || loan.status !== "Disetujui") {
-          throw new Error("Hanya Admin yang dapat memproses transaksi yang disetujui.");
+        if (!state?.isAdmin || loan.status !== "Dipinjam") { // # FLOWCHART UPDATE: validasi status sebelum membuka pengembalian.
+          throw new Error("Hanya Admin yang dapat memproses transaksi berstatus Dipinjam.");
         }
         returnLoanId = loan.id;
         const loanItems = loan.items || [];
@@ -901,11 +903,12 @@
           catch (error) { showFailure(error); }
           return;
         }
-        const labels = { approve: "setujui", reject: "tolak" };
+        const labels = { approve: "setujui", reject: "tolak", handover: "serahkan barang" }; // # FLOWCHART UPDATE: tambahkan konfirmasi serah-terima.
         if (!window.confirm(`Yakin ingin ${labels[action]}?`)) return;
         button.disabled = true;
         try {
-          await apiFetch(`/peminjaman/${button.dataset.loanId}/${action}`, { method: "PUT" });
+          const endpoint = action === "handover" ? "serahkan" : action; // # FLOWCHART UPDATE: gunakan endpoint penyerahan barang.
+          await apiFetch(`/peminjaman/${button.dataset.loanId}/${endpoint}`, { method: "PUT" });
           window.showToast("Status transaksi berhasil diperbarui.");
           await loadLoans();
         } catch (error) { showFailure(error); button.disabled = false; }
