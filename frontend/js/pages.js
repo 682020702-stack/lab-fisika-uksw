@@ -62,26 +62,33 @@
     };
 
     const refreshItemRows = () => {
-      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FIX SEARCHABLE DROPDOWN: baca query untuk memfilter nama barang.
+      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FIX FINAL SEARCH: gunakan input yang sudah ada sebagai sumber filter dropdown.
       const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
       rows.forEach((row) => {
         const select = row.querySelector("[data-loan-item]");
         const quantity = row.querySelector("[data-loan-quantity]");
-        const selectedId = Number(select.value) || null;
+        let selectedId = Number(row.dataset.selectedItemId) || Number(select.value) || null;
+        if (selectedId && !availableItems.some((item) => item.id === selectedId)) {
+          row.dataset.selectedItemId = "";
+          selectedId = null;
+        }
         const usedByOtherRows = new Set(
           rows
             .filter((otherRow) => otherRow !== row)
-            .map((otherRow) => Number(otherRow.querySelector("[data-loan-item]").value))
+            .map((otherRow) => Number(otherRow.dataset.selectedItemId) || Number(otherRow.querySelector("[data-loan-item]").value))
             .filter(Boolean),
         );
-        const options = availableItems.filter((item) => (item.id === selectedId || !usedByOtherRows.has(item.id)) && (item.id === selectedId || !query || item.nama_barang.toLocaleLowerCase("id").includes(query))); // FIX SEARCHABLE DROPDOWN: filter nama dan tetap pertahankan pilihan aktif serta larangan duplikasi.
+        const options = availableItems.filter((item) =>
+          !usedByOtherRows.has(item.id)
+          && (!query || String(item.nama_barang ?? "").toLocaleLowerCase("id").includes(query))
+        ); // FIX FINAL SEARCH: setiap select hanya menampilkan nama yang cocok; query kosong menampilkan semua barang.
         select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
           `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
         ).join("")}`;
         select.value = selectedId && options.some((item) => item.id === selectedId)
           ? String(selectedId)
           : "";
-        const selected = availableItems.find((item) => String(item.id) === select.value);
+        const selected = availableItems.find((item) => item.id === selectedId);
         quantity.max = selected ? String(selected.stok) : "";
         quantity.value = selected
           ? String(Math.min(Number(quantity.value) || 1, selected.stok))
@@ -104,8 +111,12 @@
       `;
       itemsContainer.append(row);
       const select = row.querySelector("[data-loan-item]");
+      row.dataset.selectedItemId = itemId ? String(itemId) : "";
       select.value = itemId ? String(itemId) : "";
-      select.addEventListener("change", refreshItemRows);
+      select.addEventListener("change", () => {
+        row.dataset.selectedItemId = select.value;
+        refreshItemRows();
+      });
       row.querySelector("[data-loan-quantity]").addEventListener("input", refreshItemRows);
       row.querySelector("[data-remove-loan-item]").addEventListener("click", () => {
         row.remove();
@@ -139,14 +150,14 @@
       modal.showModal();
     };
 
-    itemSearch.addEventListener("input", refreshItemRows); // FIX SEARCHABLE DROPDOWN: perbarui opsi seluruh baris secara real-time.
+    itemSearch.addEventListener("input", refreshItemRows); // FIX FINAL SEARCH: sinkronkan semua dropdown langsung saat input berubah.
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const items = [...itemsContainer.querySelectorAll(".loan-item-row")].map((row) => {
-        const barangId = Number(row.querySelector("[data-loan-item]").value);
+        const barangId = Number(row.dataset.selectedItemId) || Number(row.querySelector("[data-loan-item]").value);
         const jumlah = Number(row.querySelector("[data-loan-quantity]").value);
         return { barang_id: barangId, jumlah };
       });

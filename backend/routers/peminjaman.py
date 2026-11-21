@@ -65,7 +65,9 @@ def _transisikan_status(
             status_code=409,
             detail=f"Transaksi harus berstatus {status_asal} untuk diproses.",
         )
-    peminjaman.status = status_tujuan  # FLOWCHART UPDATE: sinkronkan status pada objek ORM.
+    peminjaman.status = (
+        status_tujuan  # FLOWCHART UPDATE: sinkronkan status pada objek ORM.
+    )
 
 
 @router.get("", response_model=list[PeminjamanResponse])
@@ -144,10 +146,7 @@ def create_peminjaman(
 
     requested = {item.barang_id: item.jumlah for item in payload.items}
     barangs = (
-        db.query(Barang)
-        .filter(Barang.id.in_(requested))
-        .order_by(Barang.id)
-        .all()
+        db.query(Barang).filter(Barang.id.in_(requested)).order_by(Barang.id).all()
     )
     barang_by_id = {barang.id: barang for barang in barangs}
     missing_ids = requested.keys() - barang_by_id.keys()
@@ -157,9 +156,7 @@ def create_peminjaman(
             detail=f"Barang tidak ditemukan: {', '.join(map(str, sorted(missing_ids)))}",
         )
     insufficient = [
-        barang.nama_barang
-        for barang in barangs
-        if barang.stok < requested[barang.id]
+        barang.nama_barang for barang in barangs if barang.stok < requested[barang.id]
     ]
     if insufficient:
         raise HTTPException(
@@ -282,9 +279,7 @@ def reject_peminjaman(
     peminjaman = _get_peminjaman(db, peminjaman_id)
     # FLOWCHART UPDATE: penolakan hanya dapat dilakukan dari Menunggu.
     _transisikan_status(db, peminjaman, "Menunggu", "Ditolak")
-    item_names = ", ".join(
-        item.barang.nama_barang for item in peminjaman.items
-    )
+    item_names = ", ".join(item.barang.nama_barang for item in peminjaman.items)
     log_aktivitas(
         db,
         admin,
@@ -398,7 +393,9 @@ def return_peminjaman(
 
     # FLOWCHART UPDATE: pengembalian hanya mengubah Dipinjam menjadi Dikembalikan.
     _transisikan_status(db, peminjaman, "Dipinjam", "Dikembalikan")
-    planned_date = peminjaman.tanggal_kembali.date() if peminjaman.tanggal_kembali else None
+    planned_date = (
+        peminjaman.tanggal_kembali.date() if peminjaman.tanggal_kembali else None
+    )
     late_days = max(0, (date.today() - planned_date).days) if planned_date else 0
     stock_changes = []
     if payload.kondisi_kembali != "Hilang":
