@@ -51,21 +51,17 @@
     const modal = document.getElementById("loan-create-modal");
     const form = document.getElementById("loan-create-form");
     const itemsContainer = document.getElementById("loan-items-container");
-    const itemSearch = document.getElementById("loan-item-search"); // FITUR BARU: cari barang pada pilihan pengajuan.
-    const inventorySearch = document.getElementById("item-search"); // FIX SEARCH SINKRONISASI: input pencarian inventaris.
+    // AUDIT FIX: pencarian barang menggunakan filter utama halaman, bukan kolom duplikat di modal.
     const submitButton = document.getElementById("submit-loan");
     const addItemButton = document.getElementById("add-loan-item");
     let availableItems = [];
-    let categoryNames = new Map(); // FITUR BARU: nama kategori dipakai sebagai kata pencarian.
 
-    const setItems = (items, categories = []) => { // FITUR BARU: terima kategori bersama daftar barang.
+    const setItems = (items) => { // AUDIT FIX: opsi modal mengikuti inventaris tanpa pencarian duplikat.
       availableItems = items.filter((item) => item.stok > 0);
-      categoryNames = new Map(categories.map((category) => [category.id, category.nama_kategori])); // FITUR BARU: indeks kategori untuk pencarian.
       refreshItemRows();
     };
 
     const refreshItemRows = () => {
-      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FITUR BARU: pencarian langsung tanpa memuat ulang halaman.
       const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
       rows.forEach((row) => {
         const select = row.querySelector("[data-loan-item]");
@@ -77,13 +73,7 @@
             .map((otherRow) => Number(otherRow.querySelector("[data-loan-item]").value))
             .filter(Boolean),
         );
-        const options = availableItems.filter(
-          (item) => (item.id === selectedId || !usedByOtherRows.has(item.id))
-            && (item.id === selectedId || !query
-              || `${item.nama_barang} ${categoryNames.get(item.kategori_id) || ""}`
-                .toLocaleLowerCase("id")
-                .includes(query)), // FITUR BARU: cocokkan nama barang dan kategori.
-        );
+        const options = availableItems.filter((item) => item.id === selectedId || !usedByOtherRows.has(item.id)); // AUDIT FIX: pertahankan semua pilihan yang tersedia, kecuali barang pada baris lain.
         select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
           `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
         ).join("")}`;
@@ -134,7 +124,6 @@
 
     const open = (itemId = null) => {
       form.reset();
-      itemSearch.value = inventorySearch?.value || ""; // FIX SEARCH SINKRONISASI: pertahankan query inventaris saat modal dibuka.
       itemsContainer.replaceChildren();
       setDefaultLoanDates();
       if (itemId !== null && !availableItems.some((item) => item.id === itemId)) {
@@ -149,11 +138,7 @@
       modal.showModal();
     };
 
-    itemSearch.addEventListener("input", refreshItemRows); // FITUR BARU: perbarui opsi saat pengguna mengetik.
-    inventorySearch?.addEventListener("input", () => { // FIX SEARCH SINKRONISASI: sinkronkan pencarian inventaris ke daftar form.
-      itemSearch.value = inventorySearch.value;
-      refreshItemRows();
-    });
+    // AUDIT FIX: pencarian utama hanya memfilter daftar halaman; dropdown tetap menyediakan opsi untuk multi-item.
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
@@ -298,7 +283,7 @@
       return matchesText && (!categoryId || String(item.kategori_id) === categoryId);
     });
     document.getElementById("item-count").textContent = `${filtered.length} barang`;
-    itemLoanRequestForm?.setItems(items, categories); // FITUR BARU: teruskan kategori untuk pencarian barang.
+    itemLoanRequestForm?.setItems(items); // AUDIT FIX: dropdown modal tetap dimuat dari inventaris.
     document.getElementById("items-body").innerHTML = filtered.length ? filtered.map((item) => `
       <tr><td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
         <div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-item="${item.id}" aria-label="Edit ${escapeHTML(item.nama_barang)}" title="Edit barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-item="${item.id}" aria-label="Hapus ${escapeHTML(item.nama_barang)}" title="Hapus barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
@@ -345,11 +330,27 @@
     }
   }
 
+  function filterLoanRows() { // AUDIT FIX: filter transaksi per barang secara lokal dan real-time.
+    const query = document.getElementById("loan-search")?.value.trim().toLocaleLowerCase("id") || ""; // AUDIT FIX: baca query dari search bar utama.
+    const tbody = document.getElementById("loans-body"); // AUDIT FIX: targetkan tabel transaksi yang sudah dimuat.
+    const rows = [...tbody.querySelectorAll("tr[data-loan-search]")]; // AUDIT FIX: ambil baris transaksi yang punya indeks barang.
+    let visibleCount = 0; // AUDIT FIX: hitung transaksi yang cocok dengan pencarian.
+    rows.forEach((row) => { // AUDIT FIX: filter dilakukan tanpa request jaringan.
+      const matches = !query || row.dataset.loanSearch.includes(query); // AUDIT FIX: cocokan nama atau kode barang.
+      row.hidden = !matches; // AUDIT FIX: sembunyikan baris yang tidak cocok.
+      if (matches) visibleCount += 1; // AUDIT FIX: perbarui jumlah hasil pencarian.
+    }); // AUDIT FIX: selesaikan pemfilteran seluruh baris.
+    tbody.querySelector("[data-loan-search-empty]")?.remove(); // AUDIT FIX: hapus pesan kosong pencarian sebelumnya.
+    if (query && rows.length && visibleCount === 0) { // AUDIT FIX: beri umpan balik saat tidak ada barang cocok.
+      tbody.insertAdjacentHTML("beforeend", '<tr data-loan-search-empty><td colspan="8"><div class="empty-state">Tidak ada transaksi dengan barang yang sesuai.</div></td></tr>'); // AUDIT FIX: tampilkan status hasil pencarian kosong.
+    } // AUDIT FIX: tutup kondisi hasil kosong.
+    document.getElementById("loan-count").textContent = `${visibleCount} transaksi`; // AUDIT FIX: sinkronkan jumlah transaksi terlihat.
+  } // AUDIT FIX: tutup helper filter lokal.
+
   async function loadLoans() {
-    const [currentUser, items, categories] = await Promise.all([ // FITUR BARU: kategori dipakai untuk pencarian saat mengajukan dari halaman Peminjaman.
+    const [currentUser, items] = await Promise.all([ // AUDIT FIX: kategori tidak diperlukan untuk dropdown modal yang tidak lagi punya pencarian sendiri.
       apiFetch("/users/me"),
       apiFetch("/barang"),
-      apiFetch("/kategori"),
     ]);
     const isAdmin = currentUser.role?.toLowerCase() === "admin";
     // FIX STRUK ROLE: tentukan tampilan struk secara eksplisit untuk role User.
@@ -358,6 +359,7 @@
     const users = isAdmin ? await apiFetch("/users") : [currentUser];
     const userNames = new Map(users.map((user) => [user.id, user.nama_lengkap]));
     const itemNames = new Map(items.map((item) => [item.id, item.nama_barang]));
+    const itemCodes = new Map(items.map((item) => [item.id, item.kode_barang])); // AUDIT FIX: sediakan kode barang untuk pencarian transaksi.
     window.loanPageState = { currentUser, isAdmin, isUser, userNames, itemNames };
     const createButton = document.getElementById("open-loan-modal");
     if (createButton) {
@@ -367,7 +369,7 @@
       );
     }
 
-    loanRequestForm?.setItems(items, categories); // FITUR BARU: sertakan nama kategori dalam pilihan yang dapat dicari.
+    loanRequestForm?.setItems(items); // AUDIT FIX: perbarui pilihan barang pada modal multi-item.
 
     const selectedStatus = document.getElementById("loan-status-filter")?.value || "";
     const query = selectedStatus ? `?status=${encodeURIComponent(selectedStatus)}` : "";
@@ -406,6 +408,7 @@
       const itemNamesInLoan = loanItems.map((detail) =>
         itemNames.get(detail.barang_id) || detail.barang?.nama_barang || `Barang #${detail.barang_id}`,
       );
+      const loanSearchText = loanItems.map((detail) => `${itemNames.get(detail.barang_id) || detail.barang?.nama_barang || ""} ${itemCodes.get(detail.barang_id) || ""}`).join(" ").toLocaleLowerCase("id"); // AUDIT FIX: indekskan nama dan kode semua barang untuk filter utama.
       const itemSummary = itemNamesInLoan.length > 1
         ? `${itemNamesInLoan.length} Barang (${itemNamesInLoan.join(", ")})`
         : itemNamesInLoan[0]
@@ -414,8 +417,9 @@
       const totalQuantity = loanItems.reduce((total, detail) => total + detail.jumlah, 0);
       const lateDays = loan.status === "Dipinjam" ? lateDaysFor(loan.tanggal_kembali) : 0; // # FLOWCHART UPDATE: keterlambatan berlaku setelah serah-terima.
       const lateTag = lateDays ? `<span class="late-pill">Terlambat ${lateDays} hari</span>` : "";
-      return `<tr><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`;
+      return `<tr data-loan-search="${escapeHTML(loanSearchText)}"><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`; // AUDIT FIX: simpan indeks barang untuk pemfilteran real-time.
     }).join("") : emptyRow(8, "Belum ada transaksi pada filter ini.");
+    filterLoanRows(); // AUDIT FIX: terapkan search bar utama setelah tabel transaksi dirender.
     addMobileCardLabels(document.getElementById("loans-body"));
   }
 
@@ -858,6 +862,7 @@
         lateInfo.classList.toggle("is-late", lateDays > 0);
         returnModal.showModal();
       };
+      document.getElementById("loan-search").addEventListener("input", filterLoanRows); // AUDIT FIX: filter daftar transaksi lokal setiap input berubah.
       document.getElementById("loan-status-filter").addEventListener("change", () => loadLoans().catch(showFailure));
       document.getElementById("loan-month-filter").addEventListener("change", (event) => {
         document.getElementById("custom-month-wrap").classList.toggle("hidden", event.currentTarget.value !== "custom");
