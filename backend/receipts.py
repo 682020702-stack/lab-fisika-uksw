@@ -207,14 +207,9 @@ def build_loan_receipt(loan) -> BytesIO:
         if loan.catatan_admin:
             section("CATATAN PETUGAS", [("Catatan", loan.catatan_admin)])
 
-    notes = {
-        "Menunggu": "Pengajuan masih menunggu persetujuan. Bukti ini belum menjadi izin pengambilan barang.",
-        "Ditolak": "Pengajuan ditolak. Bukti ini bukan izin pengambilan barang.",
-        "Disetujui": "Pengajuan disetujui. Tunjukkan bukti ini kepada petugas saat pengambilan barang dan pengembalian sesuai jadwal.",
-    }
-    note = notes.get(
-        loan.status,
-        "Pengembalian sudah dicatat. Simpan bukti ini sebagai arsip transaksi Anda.",
+    note = (
+        "Pengajuan disetujui. Tunjukkan bukti ini kepada petugas saat pengambilan barang "
+        "dan pengembalian sesuai jadwal."
     )
     story.extend([Spacer(1, 10), p(note, small)])
 
