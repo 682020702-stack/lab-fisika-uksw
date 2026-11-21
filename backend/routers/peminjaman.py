@@ -108,10 +108,16 @@ def export_bukti_peminjaman(
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     loan = get_peminjaman(peminjaman_id, db, current_user)
-    if loan.status != "Disetujui":
+    # FIX STRUK ROLE: endpoint struk hanya untuk role User dan status yang sudah disetujui atau sesudahnya.
+    if current_user.role.casefold() != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Struk peminjaman hanya tersedia untuk role User",
+        )
+    if loan.status not in {"Disetujui", "Dipinjam", "Dikembalikan"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Struk hanya tersedia untuk peminjaman yang telah disetujui",
+            detail="Struk hanya tersedia setelah pengajuan disetujui",
         )
     filename_code = re.sub(r"[^A-Za-z0-9_-]", "_", loan.kode_peminjaman)
     return StreamingResponse(

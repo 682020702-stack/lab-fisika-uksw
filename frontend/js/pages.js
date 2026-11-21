@@ -346,11 +346,13 @@
       apiFetch("/kategori"),
     ]);
     const isAdmin = currentUser.role?.toLowerCase() === "admin";
+    // FIX STRUK ROLE: tentukan tampilan struk secara eksplisit untuk role User.
+    const isUser = currentUser.role?.toLowerCase() === "user";
     api.saveUser(currentUser);
     const users = isAdmin ? await apiFetch("/users") : [currentUser];
     const userNames = new Map(users.map((user) => [user.id, user.nama_lengkap]));
     const itemNames = new Map(items.map((item) => [item.id, item.nama_barang]));
-    window.loanPageState = { currentUser, isAdmin, userNames, itemNames };
+    window.loanPageState = { currentUser, isAdmin, isUser, userNames, itemNames };
     const createButton = document.getElementById("open-loan-modal");
     if (createButton) {
       createButton.classList.toggle(
@@ -389,7 +391,8 @@
         actions.push(`<button class="btn btn-return" type="button" data-loan-action="return" data-loan-id="${loan.id}">Proses Pengembalian</button>`); // # FLOWCHART UPDATE: pengembalian hanya untuk status Dipinjam.
       }
       actions.push(`<button class="btn btn-quiet" type="button" data-loan-detail="${loan.id}">Lihat Detail</button>`);
-      if (loan.status === "Disetujui") {
+      // FIX STRUK ROLE: sembunyikan struk dari Admin dan tampilkan pada semua status aktif User.
+      if (isUser && ["Disetujui", "Dipinjam", "Dikembalikan"].includes(loan.status)) {
         actions.push(`<button class="btn btn-quiet" type="button" data-loan-receipt="${loan.id}" data-loan-code="${escapeHTML(loan.kode_peminjaman)}" aria-label="Cetak struk ${escapeHTML(loan.kode_peminjaman)}">Cetak Struk PDF</button>`);
       }
       const borrowerName = userNames.get(loan.user_id) || (isAdmin ? `Pengguna #${loan.user_id}` : currentUser.nama_lengkap);
@@ -897,7 +900,9 @@
             `).join("");
             receiptButton.dataset.loanReceipt = String(loan.id);
             receiptButton.dataset.loanCode = loan.kode_peminjaman;
-            const canPrintReceipt = loan.status === "Disetujui";
+            // FIX STRUK ROLE: tombol detail hanya tersedia untuk role User pada status yang dapat dicetak.
+            const canPrintReceipt = window.loanPageState?.isUser
+              && ["Disetujui", "Dipinjam", "Dikembalikan"].includes(loan.status);
             receiptButton.hidden = !canPrintReceipt;
             receiptButton.classList.toggle("hidden", !canPrintReceipt);
             detailModal.showModal();
