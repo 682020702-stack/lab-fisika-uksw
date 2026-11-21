@@ -258,7 +258,8 @@ def approve_peminjaman(
     _buat_notifikasi(
         db,
         peminjaman.user_id,
-        f"Peminjaman {peminjaman.kode_peminjaman} disetujui.",
+        f"Peminjaman {peminjaman.kode_peminjaman} disetujui. "
+        "Silakan datang ke laboratorium untuk mengambil barang Anda.",  # FITUR BARU: arahkan peminjam setelah persetujuan.
     )
     db.commit()
     db.refresh(peminjaman)
@@ -290,7 +291,8 @@ def reject_peminjaman(
     _buat_notifikasi(
         db,
         peminjaman.user_id,
-        f"Peminjaman {peminjaman.kode_peminjaman} ditolak.",
+        f"Mohon maaf, pengajuan peminjaman {peminjaman.kode_peminjaman} "
+        "Anda ditolak oleh Admin.",  # FITUR BARU: simpan pesan notifikasi untuk pengajuan yang ditolak.
     )
     db.commit()
     db.refresh(peminjaman)

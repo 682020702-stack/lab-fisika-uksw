@@ -47,7 +47,7 @@
     <form id="loan-create-form">
       <div class="panel-title" id="loan-create-title">Ajukan Peminjaman</div>
       <div class="loan-form-grid mt-5">
-        <div class="form-field full"><div class="field-label">Daftar Barang</div><div id="loan-items-container"></div><button class="btn btn-quiet mt-2" id="add-loan-item" type="button">＋ Tambah Barang</button><div class="field-hint">Pilih barang berbeda untuk setiap baris. Jumlah dibatasi stok yang tersedia.</div></div>
+        <div class="form-field full"><label class="field-label" for="loan-item-search">Cari Barang...</label><input class="input-control mb-2" id="loan-item-search" type="search" placeholder="Cari nama barang atau kategori" autocomplete="off"><!-- # FITUR BARU: cari opsi barang secara langsung. --><div class="field-label">Daftar Barang</div><div id="loan-items-container"></div><button class="btn btn-quiet mt-2" id="add-loan-item" type="button">＋ Tambah Barang</button><div class="field-hint">Pilih barang berbeda untuk setiap baris. Jumlah dibatasi stok yang tersedia.</div></div>
         <div class="form-field"><label class="field-label" for="loan-date">Tanggal Pinjam</label><input class="input-control" id="loan-date" name="tanggal_pinjam" type="date" required></div>
         <div class="form-field"><label class="field-label" for="loan-return-date">Tanggal Kembali</label><input class="input-control" id="loan-return-date" name="tanggal_kembali" type="date" required></div>
         <div class="form-field full"><label class="field-label" for="loan-note">Keterangan <span class="font-normal text-[#87928a]">(opsional)</span></label><textarea class="input-control loan-textarea" id="loan-note" name="keterangan" maxlength="1000" rows="3" placeholder="Keperluan peminjaman"></textarea></div>

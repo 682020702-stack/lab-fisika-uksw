@@ -1,4 +1,8 @@
 (() => {
+  // DARK MODE: Restore the saved theme before rendering the shared page layout.
+  const themeStorageKey = "lab-fisika-theme";
+  document.body.classList.toggle("dark-mode", window.localStorage.getItem(themeStorageKey) === "dark");
+
   const api = window.LabAPI;
   const icons = {
     dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg>',
@@ -99,7 +103,7 @@
         <button class="mobile-menu" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" data-menu-toggle><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
         <div><div class="topbar-title">${currentTitle}</div><div class="topbar-kicker">Sistem Manajemen Laboratorium Fisika dan Pembelajaran Fisika</div></div>
       </div>
-      <div class="topbar-right"><div class="text-right"><div class="font-semibold text-[#34433a]" data-header-name>Memuat pengguna…</div><div class="mt-1 flex justify-end gap-1.5"><span class="role-badge" data-header-role></span><span class="role-badge role-badge-user hidden" data-header-type></span></div></div><span class="avatar" data-avatar>A</span></div>`;
+      <div class="topbar-right"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Aktifkan mode gelap" title="Aktifkan mode gelap" aria-pressed="false"></button><div class="text-right"><div class="font-semibold text-[#34433a]" data-header-name>Memuat pengguna…</div><div class="mt-1 flex justify-end gap-1.5"><span class="role-badge" data-header-role></span><span class="role-badge role-badge-user hidden" data-header-type></span></div></div><span class="avatar" data-avatar>A</span></div>`;
 
     const pageContent = document.querySelector(".page-content");
     if (pageContent && !pageContent.querySelector(".page-date")) {
@@ -135,6 +139,23 @@
     document.querySelectorAll("[data-logout]").forEach((button) => button.addEventListener("click", window.LabAuth.logout));
     document.querySelector("[data-menu-toggle]")?.addEventListener("click", window.toggleSidebar);
     document.querySelectorAll(".side-link").forEach((link) => link.addEventListener("click", () => setSidebarOpen(false)));
+    // DARK MODE: Toggle the shared theme and persist it for the user's next visit.
+    const themeToggle = document.querySelector("[data-theme-toggle]");
+    const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.2 15.4A8.5 8.5 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"/></svg>';
+    const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>';
+    const updateThemeToggle = () => {
+      const isDarkMode = document.body.classList.contains("dark-mode");
+      themeToggle.innerHTML = isDarkMode ? sunIcon : moonIcon;
+      themeToggle.setAttribute("aria-label", isDarkMode ? "Aktifkan mode terang" : "Aktifkan mode gelap");
+      themeToggle.setAttribute("title", isDarkMode ? "Aktifkan mode terang" : "Aktifkan mode gelap");
+      themeToggle.setAttribute("aria-pressed", String(isDarkMode));
+    };
+    themeToggle?.addEventListener("click", () => {
+      const isDarkMode = document.body.classList.toggle("dark-mode");
+      window.localStorage.setItem(themeStorageKey, isDarkMode ? "dark" : "light");
+      updateThemeToggle();
+    });
+    updateThemeToggle();
     setSidebarOpen(false);
 
     if (user?.role && !isAdmin && ["users", "reports", "activity"].includes(active)) {

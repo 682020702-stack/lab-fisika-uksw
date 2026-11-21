@@ -51,16 +51,20 @@
     const modal = document.getElementById("loan-create-modal");
     const form = document.getElementById("loan-create-form");
     const itemsContainer = document.getElementById("loan-items-container");
+    const itemSearch = document.getElementById("loan-item-search"); // FITUR BARU: cari barang pada pilihan pengajuan.
     const submitButton = document.getElementById("submit-loan");
     const addItemButton = document.getElementById("add-loan-item");
     let availableItems = [];
+    let categoryNames = new Map(); // FITUR BARU: nama kategori dipakai sebagai kata pencarian.
 
-    const setItems = (items) => {
+    const setItems = (items, categories = []) => { // FITUR BARU: terima kategori bersama daftar barang.
       availableItems = items.filter((item) => item.stok > 0);
+      categoryNames = new Map(categories.map((category) => [category.id, category.nama_kategori])); // FITUR BARU: indeks kategori untuk pencarian.
       refreshItemRows();
     };
 
     const refreshItemRows = () => {
+      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FITUR BARU: pencarian langsung tanpa memuat ulang halaman.
       const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
       rows.forEach((row) => {
         const select = row.querySelector("[data-loan-item]");
@@ -73,7 +77,11 @@
             .filter(Boolean),
         );
         const options = availableItems.filter(
-          (item) => item.id === selectedId || !usedByOtherRows.has(item.id),
+          (item) => (item.id === selectedId || !usedByOtherRows.has(item.id))
+            && (item.id === selectedId || !query
+              || `${item.nama_barang} ${categoryNames.get(item.kategori_id) || ""}`
+                .toLocaleLowerCase("id")
+                .includes(query)), // FITUR BARU: cocokkan nama barang dan kategori.
         );
         select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
           `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
@@ -139,6 +147,7 @@
       modal.showModal();
     };
 
+    itemSearch.addEventListener("input", refreshItemRows); // FITUR BARU: perbarui opsi saat pengguna mengetik.
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
@@ -283,7 +292,7 @@
       return matchesText && (!categoryId || String(item.kategori_id) === categoryId);
     });
     document.getElementById("item-count").textContent = `${filtered.length} barang`;
-    itemLoanRequestForm?.setItems(items);
+    itemLoanRequestForm?.setItems(items, categories); // FITUR BARU: teruskan kategori untuk pencarian barang.
     document.getElementById("items-body").innerHTML = filtered.length ? filtered.map((item) => `
       <tr><td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
         <div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-item="${item.id}" aria-label="Edit ${escapeHTML(item.nama_barang)}" title="Edit barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-item="${item.id}" aria-label="Hapus ${escapeHTML(item.nama_barang)}" title="Hapus barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
@@ -331,9 +340,10 @@
   }
 
   async function loadLoans() {
-    const [currentUser, items] = await Promise.all([
+    const [currentUser, items, categories] = await Promise.all([ // FITUR BARU: kategori dipakai untuk pencarian saat mengajukan dari halaman Peminjaman.
       apiFetch("/users/me"),
       apiFetch("/barang"),
+      apiFetch("/kategori"),
     ]);
     const isAdmin = currentUser.role?.toLowerCase() === "admin";
     api.saveUser(currentUser);
@@ -349,7 +359,7 @@
       );
     }
 
-    loanRequestForm?.setItems(items);
+    loanRequestForm?.setItems(items, categories); // FITUR BARU: sertakan nama kategori dalam pilihan yang dapat dicari.
 
     const selectedStatus = document.getElementById("loan-status-filter")?.value || "";
     const query = selectedStatus ? `?status=${encodeURIComponent(selectedStatus)}` : "";
