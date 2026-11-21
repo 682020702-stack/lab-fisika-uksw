@@ -52,6 +52,7 @@
     const form = document.getElementById("loan-create-form");
     const itemsContainer = document.getElementById("loan-items-container");
     const itemSearch = document.getElementById("loan-item-search"); // FITUR BARU: cari barang pada pilihan pengajuan.
+    const inventorySearch = document.getElementById("item-search"); // FIX SEARCH SINKRONISASI: input pencarian inventaris.
     const submitButton = document.getElementById("submit-loan");
     const addItemButton = document.getElementById("add-loan-item");
     let availableItems = [];
@@ -133,6 +134,7 @@
 
     const open = (itemId = null) => {
       form.reset();
+      itemSearch.value = inventorySearch?.value || ""; // FIX SEARCH SINKRONISASI: pertahankan query inventaris saat modal dibuka.
       itemsContainer.replaceChildren();
       setDefaultLoanDates();
       if (itemId !== null && !availableItems.some((item) => item.id === itemId)) {
@@ -148,6 +150,10 @@
     };
 
     itemSearch.addEventListener("input", refreshItemRows); // FITUR BARU: perbarui opsi saat pengguna mengetik.
+    inventorySearch?.addEventListener("input", () => { // FIX SEARCH SINKRONISASI: sinkronkan pencarian inventaris ke daftar form.
+      itemSearch.value = inventorySearch.value;
+      refreshItemRows();
+    });
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
