@@ -62,7 +62,10 @@
     };
 
     const refreshItemRows = () => {
-      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FIX FINAL SEARCH: gunakan input yang sudah ada sebagai sumber filter dropdown.
+      const query = itemSearch.value.trim().toLocaleLowerCase("id");
+      const matchingItems = availableItems.filter((item) =>
+        !query || String(item.nama_barang ?? "").toLocaleLowerCase("id").includes(query)
+      ); // FIX MODAL SEARCH: filter hanya daftar barang tersedia berdasarkan input di modal.
       const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
       rows.forEach((row) => {
         const select = row.querySelector("[data-loan-item]");
@@ -78,10 +81,7 @@
             .map((otherRow) => Number(otherRow.dataset.selectedItemId) || Number(otherRow.querySelector("[data-loan-item]").value))
             .filter(Boolean),
         );
-        const options = availableItems.filter((item) =>
-          !usedByOtherRows.has(item.id)
-          && (!query || String(item.nama_barang ?? "").toLocaleLowerCase("id").includes(query))
-        ); // FIX FINAL SEARCH: setiap select hanya menampilkan nama yang cocok; query kosong menampilkan semua barang.
+        const options = matchingItems.filter((item) => !usedByOtherRows.has(item.id)); // FIX MODAL SEARCH: render opsi select dari hasil pencarian modal saja.
         select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
           `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
         ).join("")}`;
@@ -105,7 +105,7 @@
       const row = document.createElement("div");
       row.className = "loan-item-row";
       row.innerHTML = `
-        <div class="form-field"><label class="field-label">Barang</label><select class="input-control" data-loan-item required><option value="">Pilih barang</option></select><div class="field-hint" data-item-stock-hint>Pilih barang yang tersedia.</div></div>
+        <div class="form-field"><label class="field-label">Barang</label><select class="input-control" data-loan-item><option value="">Pilih barang</option></select><div class="field-hint" data-item-stock-hint>Pilih barang yang tersedia.</div></div>
         <div class="form-field"><label class="field-label">Jumlah</label><input class="input-control" data-loan-quantity type="number" min="1" required></div>
         <button class="btn btn-danger" data-remove-loan-item type="button" aria-label="Hapus barang">Hapus</button>
       `;
@@ -138,6 +138,7 @@
       form.reset();
       itemsContainer.replaceChildren();
       setDefaultLoanDates();
+      itemSearch.value = "";
       if (itemId !== null && !availableItems.some((item) => item.id === itemId)) {
         showFailure(new Error("Barang sudah tidak tersedia. Muat ulang data barang dan coba lagi."));
         return;
@@ -150,7 +151,7 @@
       modal.showModal();
     };
 
-    itemSearch.addEventListener("input", refreshItemRows); // FIX FINAL SEARCH: sinkronkan semua dropdown langsung saat input berubah.
+    itemSearch.addEventListener("input", refreshItemRows); // FIX MODAL SEARCH: render ulang opsi select setiap input berubah.
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
@@ -161,7 +162,7 @@
         const jumlah = Number(row.querySelector("[data-loan-quantity]").value);
         return { barang_id: barangId, jumlah };
       });
-      const invalidItem = items.some((requestedItem) => {
+      const invalidItem = items.some((requestedItem) => { // FIX MODAL SEARCH: validasi pilihan barang saat pengajuan, bukan saat dropdown difilter.
         const item = availableItems.find((available) => available.id === requestedItem.barang_id);
         return !item || requestedItem.jumlah < 1 || requestedItem.jumlah > item.stok;
       });
