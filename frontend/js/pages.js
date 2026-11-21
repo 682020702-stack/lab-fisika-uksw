@@ -51,17 +51,18 @@
     const modal = document.getElementById("loan-create-modal");
     const form = document.getElementById("loan-create-form");
     const itemsContainer = document.getElementById("loan-items-container");
-    // AUDIT FIX: pencarian barang menggunakan filter utama halaman, bukan kolom duplikat di modal.
+    const itemSearch = document.getElementById("loan-item-search"); // FIX SEARCHABLE DROPDOWN: input pencarian di modal.
     const submitButton = document.getElementById("submit-loan");
     const addItemButton = document.getElementById("add-loan-item");
     let availableItems = [];
 
-    const setItems = (items) => { // AUDIT FIX: opsi modal mengikuti inventaris tanpa pencarian duplikat.
+    const setItems = (items) => { // FIX SEARCHABLE DROPDOWN: siapkan opsi barang yang stoknya tersedia.
       availableItems = items.filter((item) => item.stok > 0);
       refreshItemRows();
     };
 
     const refreshItemRows = () => {
+      const query = itemSearch.value.trim().toLocaleLowerCase("id"); // FIX SEARCHABLE DROPDOWN: baca query untuk memfilter nama barang.
       const rows = [...itemsContainer.querySelectorAll(".loan-item-row")];
       rows.forEach((row) => {
         const select = row.querySelector("[data-loan-item]");
@@ -73,7 +74,7 @@
             .map((otherRow) => Number(otherRow.querySelector("[data-loan-item]").value))
             .filter(Boolean),
         );
-        const options = availableItems.filter((item) => item.id === selectedId || !usedByOtherRows.has(item.id)); // AUDIT FIX: pertahankan semua pilihan yang tersedia, kecuali barang pada baris lain.
+        const options = availableItems.filter((item) => (item.id === selectedId || !usedByOtherRows.has(item.id)) && (item.id === selectedId || !query || item.nama_barang.toLocaleLowerCase("id").includes(query))); // FIX SEARCHABLE DROPDOWN: filter nama dan tetap pertahankan pilihan aktif serta larangan duplikasi.
         select.innerHTML = `<option value="">Pilih barang</option>${options.map((item) =>
           `<option value="${item.id}">${escapeHTML(item.nama_barang)}</option>`
         ).join("")}`;
@@ -138,7 +139,7 @@
       modal.showModal();
     };
 
-    // AUDIT FIX: pencarian utama hanya memfilter daftar halaman; dropdown tetap menyediakan opsi untuk multi-item.
+    itemSearch.addEventListener("input", refreshItemRows); // FIX SEARCHABLE DROPDOWN: perbarui opsi seluruh baris secara real-time.
     addItemButton.addEventListener("click", () => addItemRow());
     document.getElementById("open-loan-modal")?.addEventListener("click", () => open());
     document.getElementById("cancel-loan").addEventListener("click", () => modal.close());
