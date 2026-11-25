@@ -343,19 +343,19 @@
     }
   }
 
-  function filterLoanRows() { // AUDIT FIX: filter transaksi per barang secara lokal dan real-time.
-    const query = document.getElementById("loan-search")?.value.trim().toLocaleLowerCase("id") || ""; // AUDIT FIX: baca query dari search bar utama.
+  function filterLoanRows() { // FITUR BARU: filter transaksi berdasarkan nama pengguna secara real-time.
+    const query = document.getElementById("loan-search")?.value.trim().toLocaleLowerCase("id") || ""; // FITUR BARU: baca nama pengguna yang dicari.
     const tbody = document.getElementById("loans-body"); // AUDIT FIX: targetkan tabel transaksi yang sudah dimuat.
-    const rows = [...tbody.querySelectorAll("tr[data-loan-search]")]; // AUDIT FIX: ambil baris transaksi yang punya indeks barang.
+    const rows = [...tbody.querySelectorAll("tr[data-loan-search]")]; // FITUR BARU: ambil baris transaksi berindeks nama pengguna.
     let visibleCount = 0; // AUDIT FIX: hitung transaksi yang cocok dengan pencarian.
     rows.forEach((row) => { // AUDIT FIX: filter dilakukan tanpa request jaringan.
-      const matches = !query || row.dataset.loanSearch.includes(query); // AUDIT FIX: cocokan nama atau kode barang.
+      const matches = !query || row.dataset.loanSearch.includes(query); // FITUR BARU: cocokkan nama pengguna.
       row.hidden = !matches; // AUDIT FIX: sembunyikan baris yang tidak cocok.
       if (matches) visibleCount += 1; // AUDIT FIX: perbarui jumlah hasil pencarian.
     }); // AUDIT FIX: selesaikan pemfilteran seluruh baris.
     tbody.querySelector("[data-loan-search-empty]")?.remove(); // AUDIT FIX: hapus pesan kosong pencarian sebelumnya.
-    if (query && rows.length && visibleCount === 0) { // AUDIT FIX: beri umpan balik saat tidak ada barang cocok.
-      tbody.insertAdjacentHTML("beforeend", '<tr data-loan-search-empty><td colspan="8"><div class="empty-state">Tidak ada transaksi dengan barang yang sesuai.</div></td></tr>'); // AUDIT FIX: tampilkan status hasil pencarian kosong.
+    if (query && rows.length && visibleCount === 0) { // FITUR BARU: beri umpan balik saat nama tidak cocok.
+      tbody.insertAdjacentHTML("beforeend", '<tr data-loan-search-empty><td colspan="8"><div class="empty-state">Tidak ada transaksi dengan nama pengguna yang sesuai.</div></td></tr>'); // FITUR BARU: tampilkan status hasil pencarian kosong.
     } // AUDIT FIX: tutup kondisi hasil kosong.
     document.getElementById("loan-count").textContent = `${visibleCount} transaksi`; // AUDIT FIX: sinkronkan jumlah transaksi terlihat.
   } // AUDIT FIX: tutup helper filter lokal.
@@ -372,7 +372,6 @@
     const users = isAdmin ? await apiFetch("/users") : [currentUser];
     const userNames = new Map(users.map((user) => [user.id, user.nama_lengkap]));
     const itemNames = new Map(items.map((item) => [item.id, item.nama_barang]));
-    const itemCodes = new Map(items.map((item) => [item.id, item.kode_barang])); // AUDIT FIX: sediakan kode barang untuk pencarian transaksi.
     window.loanPageState = { currentUser, isAdmin, isUser, userNames, itemNames };
     const createButton = document.getElementById("open-loan-modal");
     if (createButton) {
@@ -421,7 +420,7 @@
       const itemNamesInLoan = loanItems.map((detail) =>
         itemNames.get(detail.barang_id) || detail.barang?.nama_barang || `Barang #${detail.barang_id}`,
       );
-      const loanSearchText = loanItems.map((detail) => `${itemNames.get(detail.barang_id) || detail.barang?.nama_barang || ""} ${itemCodes.get(detail.barang_id) || ""}`).join(" ").toLocaleLowerCase("id"); // AUDIT FIX: indekskan nama dan kode semua barang untuk filter utama.
+      const loanSearchText = borrowerName.toLocaleLowerCase("id"); // FITUR BARU: indekskan nama peminjam untuk filter transaksi.
       const itemSummary = itemNamesInLoan.length > 1
         ? `${itemNamesInLoan.length} Barang (${itemNamesInLoan.join(", ")})`
         : itemNamesInLoan[0]
@@ -430,7 +429,7 @@
       const totalQuantity = loanItems.reduce((total, detail) => total + detail.jumlah, 0);
       const lateDays = loan.status === "Dipinjam" ? lateDaysFor(loan.tanggal_kembali) : 0; // # FLOWCHART UPDATE: keterlambatan berlaku setelah serah-terima.
       const lateTag = lateDays ? `<span class="late-pill">Terlambat ${lateDays} hari</span>` : "";
-      return `<tr data-loan-search="${escapeHTML(loanSearchText)}"><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`; // AUDIT FIX: simpan indeks barang untuk pemfilteran real-time.
+      return `<tr data-loan-search="${escapeHTML(loanSearchText)}"><td class="font-semibold">${escapeHTML(loan.kode_peminjaman)}</td><td>${escapeHTML(borrowerName)}</td><td>${escapeHTML(itemSummary || "—")}</td><td>${totalQuantity}</td><td class="whitespace-nowrap">${dateText(loan.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(loan.tanggal_kembali)}${lateTag}</td><td>${statusTag(loan.status)}</td><td><div class="loan-action-buttons">${actions.join("")}</div></td></tr>`; // FITUR BARU: simpan indeks nama pengguna untuk pemfilteran.
     }).join("") : emptyRow(8, "Belum ada transaksi pada filter ini.");
     filterLoanRows(); // AUDIT FIX: terapkan search bar utama setelah tabel transaksi dirender.
     addMobileCardLabels(document.getElementById("loans-body"));

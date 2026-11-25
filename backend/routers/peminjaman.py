@@ -292,8 +292,8 @@ def reject_peminjaman(
     _buat_notifikasi(
         db,
         peminjaman.user_id,
-        f"Mohon maaf, pengajuan peminjaman {peminjaman.kode_peminjaman} "
-        "Anda ditolak oleh Admin.",  # FITUR BARU: simpan pesan notifikasi untuk pengajuan yang ditolak.
+        "Mohon maaf, pesanan Anda telah ditolak. Silakan hubungi pihak laboran "
+        "untuk keterangan lebih lanjut.",  # FITUR BARU: gunakan pesan penolakan terbaru.
     )
     db.commit()
     db.refresh(peminjaman)
