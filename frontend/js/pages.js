@@ -31,6 +31,7 @@
     const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
     return Math.max(0, Math.floor((Date.UTC(todayYear, todayMonth - 1, todayDay) - Date.UTC(dueYear, dueMonth - 1, dueDay)) / 86400000));
   };
+  // SECURITY FIX: API failures are normalized in apiFetch; the toast renders messages as text.
   const showFailure = (error) => window.showToast?.(error.message || "Terjadi kesalahan. Coba lagi.", "error");
   const formValues = (form) => Object.fromEntries(new FormData(form).entries());
   const emptyRow = (columnCount, message, title = "Belum ada data") => `<tr><td colspan="${columnCount}"><div class="empty-state"><strong>${escapeHTML(title)}</strong>${escapeHTML(message)}</div></td></tr>`;
@@ -446,8 +447,9 @@
     const suffix = reportQuery();
     const rows = await apiFetch(`/laporan/transaksi${suffix ? `?${suffix}` : ""}`);
     document.getElementById("report-count").textContent = `${rows.length} transaksi`;
+    // SECURITY FIX: Escape API-sourced identifiers before inserting them into this HTML template.
     document.getElementById("reports-body").innerHTML = rows.length ? rows.map((row) => `
-      <tr><td class="font-semibold">${escapeHTML(row.kode_peminjaman)}</td><td>${row.user_id}</td><td>${escapeHTML((row.items || []).map((detail) => `${detail.barang.kode_barang} / ${detail.barang.nama_barang} × ${detail.jumlah}`).join(", "))}</td><td class="whitespace-nowrap">${dateText(row.tanggal_pinjam)}</td><td class="whitespace-nowrap">${dateOnly(row.tanggal_kembali)}</td><td>${statusTag(row.status)}</td></tr>
+      <tr><td class="font-semibold">${escapeHTML(row.kode_peminjaman)}</td><td>${escapeHTML(row.user_id)}</td><td>${escapeHTML((row.items || []).map((detail) => `${detail.barang.kode_barang} / ${detail.barang.nama_barang} × ${detail.jumlah}`).join(", "))}</td><td class="whitespace-nowrap">${dateText(row.tanggal_pinjam)}</td><td>${dateOnly(row.tanggal_kembali)}</td><td>${statusTag(row.status)}</td></tr>
     `).join("") : emptyRow(6, "Tidak ada transaksi pada rentang tanggal ini.");
     addMobileCardLabels(document.getElementById("reports-body"));
   }

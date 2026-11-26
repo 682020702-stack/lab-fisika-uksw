@@ -145,63 +145,75 @@ def create_peminjaman(
         )
 
     requested = {item.barang_id: item.jumlah for item in payload.items}
-    barangs = (
-        db.query(Barang).filter(Barang.id.in_(requested)).order_by(Barang.id).all()
-    )
-    barang_by_id = {barang.id: barang for barang in barangs}
-    missing_ids = requested.keys() - barang_by_id.keys()
-    if missing_ids:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Barang tidak ditemukan: {', '.join(map(str, sorted(missing_ids)))}",
-        )
-    insufficient = [
-        barang.nama_barang for barang in barangs if barang.stok < requested[barang.id]
-    ]
-    if insufficient:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Stok barang tidak mencukupi: {', '.join(insufficient)}",
-        )
-
     tanggal_pinjam = payload.tanggal_pinjam or datetime.now()
-    for _ in range(10):
-        kode_peminjaman = _generate_kode_peminjaman(db, tanggal_pinjam)
-        peminjaman = Peminjaman(
-            kode_peminjaman=kode_peminjaman,
-            user_id=current_user.id,
-            tanggal_pinjam=tanggal_pinjam,
-            tanggal_kembali=payload.tanggal_kembali,
-            keterangan=payload.keterangan,
-            status="Menunggu",  # FLOWCHART UPDATE: status awal hanya ditetapkan server.
-            items=[
-                DetailPeminjaman(
-                    barang_id=item.barang_id,
-                    jumlah=item.jumlah,
-                    kondisi_saat_pinjam=barang_by_id[item.barang_id].kondisi,
+    try:
+        for _ in range(10):
+            # RACE CONDITION FIX: Lock requested rows in stable order before reading stock.
+            barangs = (
+                db.query(Barang)
+                .filter(Barang.id.in_(requested))
+                .order_by(Barang.id)
+                .with_for_update()
+                .all()
+            )
+            barang_by_id = {barang.id: barang for barang in barangs}
+            missing_ids = requested.keys() - barang_by_id.keys()
+            if missing_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Barang tidak ditemukan: {', '.join(map(str, sorted(missing_ids)))}",
                 )
-                for item in payload.items
-            ],
-        )
-        db.add(peminjaman)
-        try:
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            if (
-                db.query(Peminjaman.id)
-                .filter(Peminjaman.kode_peminjaman == kode_peminjaman)
-                .first()
-            ):
-                continue
-            raise
-        db.refresh(peminjaman)
-        return peminjaman
+            # RACE CONDITION FIX: Check stock only after the requested rows are locked.
+            if any(barang.stok < requested[barang.id] for barang in barangs):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Stok tidak mencukupi",
+                )
 
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Tidak dapat membuat kode transaksi unik. Silakan coba lagi.",
-    )
+            # RACE CONDITION FIX: Reserve every item in the same transaction as the loan.
+            for barang in barangs:
+                barang.stok -= requested[barang.id]
+
+            kode_peminjaman = _generate_kode_peminjaman(db, tanggal_pinjam)
+            peminjaman = Peminjaman(
+                kode_peminjaman=kode_peminjaman,
+                user_id=current_user.id,
+                tanggal_pinjam=tanggal_pinjam,
+                tanggal_kembali=payload.tanggal_kembali,
+                keterangan=payload.keterangan,
+                status="Menunggu",  # FLOWCHART UPDATE: status awal hanya ditetapkan server.
+                items=[
+                    DetailPeminjaman(
+                        barang_id=item.barang_id,
+                        jumlah=item.jumlah,
+                        kondisi_saat_pinjam=barang_by_id[item.barang_id].kondisi,
+                    )
+                    for item in payload.items
+                ],
+            )
+            db.add(peminjaman)
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+                if (
+                    db.query(Peminjaman.id)
+                    .filter(Peminjaman.kode_peminjaman == kode_peminjaman)
+                    .first()
+                ):
+                    continue
+                raise
+            db.refresh(peminjaman)
+            return peminjaman
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Tidak dapat membuat kode transaksi unik. Silakan coba lagi.",
+        )
+    except Exception:
+        # RACE CONDITION FIX: Roll back failed validation, persistence, and retry operations.
+        db.rollback()
+        raise
 
 
 @router.put("/{peminjaman_id}/approve", response_model=PeminjamanResponse)
@@ -215,47 +227,18 @@ def approve_peminjaman(
     if peminjaman.status != "Menunggu":
         raise HTTPException(status_code=409, detail="Transaksi bukan pengajuan aktif")
     items = sorted(peminjaman.items, key=lambda item: item.barang_id)
-    barang_ids = [item.barang_id for item in items]
-    barangs = (
-        db.query(Barang)
-        .filter(Barang.id.in_(barang_ids))
-        .order_by(Barang.id)
-        .with_for_update()
-        .all()
-    )
-    barang_by_id = {barang.id: barang for barang in barangs}
-    if len(barang_by_id) != len(barang_ids):
-        raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
-    insufficient = [
-        barang_by_id[item.barang_id].nama_barang
-        for item in items
-        if barang_by_id[item.barang_id].stok < item.jumlah
-    ]
-    if insufficient:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Stok barang tidak mencukupi: {', '.join(insufficient)}",
-        )
+    item_summary = ", ".join(item.barang.nama_barang for item in items)
 
+    # RACE CONDITION FIX: Stock was reserved during POST; approval must not deduct it again.
     # FLOWCHART UPDATE: persetujuan hanya mengubah Menunggu menjadi Disetujui.
     _transisikan_status(db, peminjaman, "Menunggu", "Disetujui")
-    stock_changes = []
-    for item in items:
-        barang = barang_by_id[item.barang_id]
-        previous_stock = barang.stok
-        barang.stok -= item.jumlah
-        stock_changes.append(
-            f"{barang.nama_barang} {previous_stock} → {barang.stok} "
-            f"({item.jumlah} unit)"
-        )
-    item_summary = ", ".join(barang_by_id[item.barang_id].nama_barang for item in items)
     log_aktivitas(
         db,
         admin,
         "Setujui Peminjaman",
         "Peminjaman",
         f"{peminjaman.kode_peminjaman} / {item_summary}",
-        "Stok diperbarui: " + "; ".join(stock_changes),
+        "Stok telah dicadangkan saat pengajuan.",
         request.client.host if request.client else None,
     )
     _buat_notifikasi(
@@ -277,16 +260,32 @@ def reject_peminjaman(
     admin: User = Depends(get_admin_user),
 ) -> Peminjaman:
     peminjaman = _get_peminjaman(db, peminjaman_id)
+    items = sorted(peminjaman.items, key=lambda item: item.barang_id)
+    barang_ids = sorted({item.barang_id for item in items})
+    barangs = (
+        db.query(Barang)
+        .filter(Barang.id.in_(barang_ids))
+        .order_by(Barang.id)
+        .with_for_update()
+        .all()
+    )
+    barang_by_id = {barang.id: barang for barang in barangs}
+    if len(barang_by_id) != len(barang_ids):
+        raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
+
     # FLOWCHART UPDATE: penolakan hanya dapat dilakukan dari Menunggu.
     _transisikan_status(db, peminjaman, "Menunggu", "Ditolak")
-    item_names = ", ".join(item.barang.nama_barang for item in peminjaman.items)
+    # RACE CONDITION FIX: Return the reservation to stock when rejecting a multi-item request.
+    for item in items:
+        barang_by_id[item.barang_id].stok += item.jumlah
+    item_names = ", ".join(barang_by_id[item.barang_id].nama_barang for item in items)
     log_aktivitas(
         db,
         admin,
         "Tolak Peminjaman",
         "Peminjaman",
         f"{peminjaman.kode_peminjaman} / {item_names}",
-        "Pengajuan peminjaman ditolak.",
+        "Pengajuan peminjaman ditolak; reservasi stok dilepas.",
         request.client.host if request.client else None,
     )
     _buat_notifikasi(

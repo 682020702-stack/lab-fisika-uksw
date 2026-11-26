@@ -5,8 +5,15 @@
   const TOKEN_KEY = "laboratorium_access_token";
   const USER_KEY = "laboratorium_user";
 
+  // SECURITY FIX: Keep bearer tokens only for the current tab session, not across browser sessions.
+  const legacyToken = localStorage.getItem(TOKEN_KEY);
+  if (legacyToken) {
+    if (!sessionStorage.getItem(TOKEN_KEY)) sessionStorage.setItem(TOKEN_KEY, legacyToken);
+    localStorage.removeItem(TOKEN_KEY);
+  }
+
   function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(TOKEN_KEY);
   }
 
   function token() {
@@ -14,7 +21,7 @@
   }
 
   function saveToken(value) {
-    localStorage.setItem(TOKEN_KEY, value);
+    sessionStorage.setItem(TOKEN_KEY, value);
   }
 
   function getUser() {
@@ -40,6 +47,7 @@
   }
 
   function clearToken() {
+    sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   }
@@ -66,20 +74,37 @@
       body = JSON.stringify(body);
     }
 
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-      body,
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers,
+        body,
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      // SECURITY FIX: Do not expose raw browser/network exception details in the UI.
+      throw new Error("Tidak dapat terhubung ke server. Periksa koneksi Anda.");
+    }
     if (!response.ok) {
-      let message = `Permintaan gagal (${response.status})`;
-      try {
-        const result = await response.json();
-        message = Array.isArray(result.detail)
-          ? result.detail.map((entry) => entry.msg).join(", ")
-          : (result.detail || result.message || message);
-      } catch {
-        // Keep the HTTP status message when the response is not JSON.
+      // SECURITY FIX: Map status codes to safe messages instead of displaying API details.
+      let message = "Permintaan gagal. Silakan coba kembali.";
+      if (response.status === 401) {
+        message = path === "/login"
+          ? "Username atau password tidak sesuai."
+          : "Sesi Anda telah berakhir, silakan login kembali.";
+      } else if (response.status === 403) {
+        message = path === "/login"
+          ? "Akun belum dapat digunakan. Periksa status verifikasi atau hubungi administrator."
+          : "Anda tidak memiliki izin untuk melakukan tindakan ini.";
+      } else if (response.status === 404) {
+        message = "Data yang diminta tidak ditemukan.";
+      } else if (response.status === 422) {
+        message = "Periksa kembali data yang Anda masukkan.";
+      } else if (response.status === 429) {
+        message = "Terlalu banyak percobaan. Silakan tunggu sebelum mencoba kembali.";
+      } else if (response.status >= 500) {
+        message = "Terjadi kesalahan pada server. Silakan coba kembali.";
       }
       if (response.status === 401 && document.body.dataset.page !== "login") {
         clearToken();

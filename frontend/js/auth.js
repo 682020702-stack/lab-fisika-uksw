@@ -35,6 +35,7 @@
         form.reset();
         location.replace("index.html");
       } catch (error) {
+        // SECURITY FIX: apiFetch maps server/network failures to safe user-facing messages.
         messageBox.textContent = error.message || "Pendaftaran gagal. Silakan coba kembali.";
         messageBox.classList.add("visible");
       } finally {
@@ -75,6 +76,7 @@
       location.href = "dashboard.html";
     } catch (error) {
       api.clearToken();
+      // SECURITY FIX: apiFetch never forwards raw API details to this text-only error box.
       errorBox.textContent = error.message || "Username atau password tidak sesuai.";
       errorBox.classList.add("visible");
     } finally {
