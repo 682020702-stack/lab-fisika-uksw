@@ -4,7 +4,7 @@
 <body data-page="users">
   <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><div class="app-main"><header class="topbar" id="topbar"></header>
     <main class="page-content">
-      <section class="page-heading"><div><h1>Data Pengguna</h1><p>Kelola akun yang memiliki akses ke sistem laboratorium.</p></div><button class="btn btn-primary hidden" data-admin-only type="button" data-toggle-user-form><span aria-hidden="true">＋</span> Tambah Pengguna</button></section>
+      <section class="page-heading"><div><h1>Data Pengguna</h1><p>Kelola akun yang memiliki akses ke sistem laboratorium.</p></div><div class="flex flex-wrap gap-2"><button class="btn btn-quiet hidden" id="download-users-excel" data-admin-only type="button">Download Excel</button><button class="btn btn-primary hidden" data-admin-only type="button" data-toggle-user-form><span aria-hidden="true">＋</span> Tambah Pengguna</button></div></section>
       <section class="panel mb-5 hidden" id="user-form-panel">
         <div class="panel-heading"><div class="panel-title" id="user-form-title">Pengguna Baru</div><button class="btn btn-quiet" type="button" data-toggle-user-form>Tutup</button></div>
         <form class="p-5" id="user-form"><div class="form-grid">
@@ -23,8 +23,11 @@
           <div class="filter-field"><label class="field-label" for="user-role-filter">Role</label><select class="input-control" id="user-role-filter"><option value="">Semua role</option><option>Admin</option><option>User</option></select></div>
           <div class="filter-field"><label class="field-label" for="user-status-filter">Status</label><select class="input-control" id="user-status-filter"><option value="">Semua status</option><option>Aktif</option><option>Pending</option></select></div>
           <div class="text-xs text-[#728078]" id="user-count"></div>
+          <!-- // BULK DELETE: aksi hapus massal hanya tersedia bagi Admin. -->
+          <button class="btn btn-danger" id="delete-selected-users" data-admin-only type="button" disabled>Hapus Pengguna Terpilih</button>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nama</th><th>Role</th><th>Tipe pengguna</th><th>Username / Email</th><th>Password</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="users-body"><tr><td colspan="8"><div class="empty-state">Memuat pengguna…</div></td></tr></tbody></table></div>
+        <!-- // BULK DELETE: checkbox header memilih semua baris yang sedang tampil. -->
+        <div class="table-wrap"><table><thead><tr><th><label class="user-select-all-label"><input class="user-select-control" id="user-select-all" type="checkbox"> Pilih Semua</label></th><th>ID</th><th>Nama</th><th>Role</th><th>Tipe pengguna</th><th>Username / Email</th><th>Password</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="users-body"><tr><td colspan="9"><div class="empty-state">Memuat pengguna…</div></td></tr></tbody></table></div>
       </section>
     </main>
   </div></div>

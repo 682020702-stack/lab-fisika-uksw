@@ -1,4 +1,8 @@
+from io import BytesIO
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,6 +17,7 @@ from backend.database import get_db
 from backend.models import LogAktivitas, Peminjaman, User
 from backend.schemas import (
     ChangePasswordRequest,
+    UserBulkDeleteRequest,
     UsernameUpdate,
     UserCreate,
     UserResponse,
@@ -21,6 +26,111 @@ from backend.schemas import (
 from backend.utils import log_aktivitas
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+# BULK DELETE: gunakan aturan hapus yang sama untuk aksi tunggal dan massal.
+def _ensure_user_deletable(db: Session, user: User, admin: User) -> None:
+    if user.id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin tidak dapat menghapus akunnya sendiri",
+        )
+    if db.query(Peminjaman.id).filter(Peminjaman.user_id == user.id).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pengguna memiliki riwayat peminjaman dan tidak dapat dihapus",
+        )
+    if (
+        user.role.casefold() == "admin"
+        and db.query(LogAktivitas.id)
+        .filter(LogAktivitas.admin_id == user.id)
+        .first()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin dengan riwayat aktivitas tidak dapat dihapus",
+        )
+
+
+@router.get("/export/excel")
+def export_users_excel(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+) -> StreamingResponse:
+    users = db.query(User).order_by(User.id).all()
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Pengguna"
+    sheet.append(["Nama", "Role", "Tipe Pengguna", "Email", "Status"])
+    for user in users:
+        sheet.append(
+            [
+                user.nama_lengkap,
+                user.role,
+                user.tipe_user or "",
+                user.email,
+                user.status,
+            ]
+        )
+        for cell in sheet[sheet.max_row]:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="data-pengguna.xlsx"'},
+    )
+
+
+@router.delete("/bulk")  # BULK DELETE: endpoint massal khusus Admin.
+def bulk_delete_users(
+    payload: UserBulkDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+) -> dict[str, int]:
+    user_ids = payload.user_ids
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    found_ids = {user.id for user in users}
+    missing_ids = sorted(set(user_ids) - found_ids)
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Pengguna tidak ditemukan: {', '.join(map(str, missing_ids))}",
+        )
+
+    for user in users:
+        _ensure_user_deletable(db, user, admin)  # BULK DELETE: pertahankan batasan hapus yang sama.
+
+    log_aktivitas(
+        db,
+        admin,
+        "Hapus Pengguna Massal",
+        "Pengguna",
+        f"{len(users)} pengguna",
+        f"ID pengguna: {', '.join(map(str, sorted(user_ids)))}",
+        request.client.host if request.client else None,
+    )
+    try:
+        deleted_count = (
+            db.query(User)
+            .filter(User.id.in_(user_ids))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pengguna terpilih memiliki data terkait dan tidak dapat dihapus",
+        ) from exc
+    return {"deleted_count": deleted_count}
 
 
 @router.get("", response_model=list[UserResponse])
@@ -223,27 +333,7 @@ def delete_user(
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
-    if user.id == admin.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Admin tidak dapat menghapus akunnya sendiri",
-        )
-    if db.query(Peminjaman.id).filter(Peminjaman.user_id == user_id).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Pengguna memiliki riwayat peminjaman dan tidak dapat dihapus",
-        )
-
-    if (
-        user.role.casefold() == "admin"
-        and db.query(LogAktivitas.id)
-        .filter(LogAktivitas.admin_id == user_id)
-        .first()
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Admin dengan riwayat aktivitas tidak dapat dihapus",
-        )
+    _ensure_user_deletable(db, user, admin)
 
     log_aktivitas(
         db,

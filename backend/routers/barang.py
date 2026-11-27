@@ -35,6 +35,7 @@ EXCEL_COLUMNS = [
     "kategori",
     "laboratorium",
     "stok",
+    "satuan",  # UPDATE BARANG: satuan disertakan pada template dan ekspor.
     "kondisi",
     "tahun_pengadaan",
 ]
@@ -42,12 +43,13 @@ EXCEL_HEADER_ALIASES = {
     "kode_barang": {"kode", "kodebarang"},
     "nama_barang": {"nama", "namabarang"},
     "kategori": {"kategori", "category", "kategoribarang", "namakategori"},
-    "laboratorium": {"laboratorium", "lab", "namalab", "ruanglab"},
+    "laboratorium": {"laboratorium", "lokasi", "lab", "namalab", "ruanglab"},  # UPDATE BARANG: impor juga menerima header Lokasi.
     "stok": {"stok", "stock", "jumlahstok", "quantity"},
+    "satuan": {"satuan", "unit"},
     "kondisi": {"kondisi", "condition", "kondisibarang", "statuskondisi"},
     "tahun_pengadaan": {"tahun", "tahunpengadaan", "thn"},
 }
-REQUIRED_EXCEL_COLUMNS = set(EXCEL_HEADER_ALIASES) - {"tahun_pengadaan"}
+REQUIRED_EXCEL_COLUMNS = set(EXCEL_HEADER_ALIASES) - {"tahun_pengadaan", "satuan"}  # UPDATE BARANG: satuan opsional untuk template Excel lama.
 
 
 def _query_barang(
@@ -291,6 +293,7 @@ def upload_barang_excel(
                 "nama_barang",
                 "kategori",
                 "laboratorium",
+                "satuan",
             )
             text_values = {
                 column: _cell_text(values[column]) for column in text_columns
@@ -300,8 +303,12 @@ def upload_barang_excel(
                 ("nama_barang", 150),
                 ("kategori", 100),
                 ("laboratorium", 100),
+                ("satuan", 50),
             ):
                 value = text_values[column]
+                if column == "satuan" and not value:
+                    text_values[column] = "unit"
+                    continue
                 if not value or len(value) > maximum:
                     raise ValueError(
                         f"kolom {column} wajib diisi dan maksimal {maximum} karakter"
@@ -336,6 +343,7 @@ def upload_barang_excel(
                     kategori_id=category.id,
                     laboratorium=text_values["laboratorium"],
                     stok=stock,
+                    satuan=text_values["satuan"],  # UPDATE BARANG: pertahankan satuan dari Excel.
                     kondisi=_normalize_condition(_cell_text(values["kondisi"])),
                     tahun_pengadaan=year,
                 )
@@ -436,6 +444,16 @@ def update_barang(
     kategori_id = changes.get("kategori_id")
     if kategori_id is not None and db.get(KategoriBarang, kategori_id) is None:
         raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
+    new_code = changes.get("kode_barang")
+    if new_code is not None and (
+        db.query(Barang.id)
+        .filter(Barang.kode_barang == new_code, Barang.id != barang_id)
+        .first()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Kode Barang sudah digunakan",  # UPDATE BARANG: tolak kode unik yang sudah terpakai.
+        )
     for field, value in changes.items():
         setattr(barang, field, value)
     detail = "; ".join(
@@ -457,9 +475,23 @@ def update_barang(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
+        duplicate_code = (
+            db.query(Barang.id)
+            .filter(
+                Barang.kode_barang == new_code,
+                Barang.id != barang_id,
+            )
+            .first()
+            if new_code is not None
+            else None
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Kode barang sudah digunakan atau data tidak valid",
+            detail=(
+                "Kode Barang sudah digunakan"
+                if duplicate_code
+                else "Perubahan barang tidak dapat disimpan karena konflik data"
+            ),  # UPDATE BARANG: sampaikan pesan spesifik bila terjadi benturan kode saat commit.
         ) from exc
     db.refresh(barang)
     return barang

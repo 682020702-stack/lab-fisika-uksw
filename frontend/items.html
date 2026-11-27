@@ -15,8 +15,11 @@
           <div class="form-field"><label class="field-label" for="item-code">Kode barang</label><input class="input-control" id="item-code" name="kode_barang" required maxlength="50"></div>
           <div class="form-field"><label class="field-label" for="item-name">Nama barang</label><input class="input-control" id="item-name" name="nama_barang" required maxlength="150"></div>
           <div class="form-field"><label class="field-label" for="item-category">Kategori</label><div class="category-select-row"><select class="input-control" id="item-category" name="kategori_id" required><option value="">Pilih kategori</option></select><button class="btn btn-quiet category-add-button hidden" data-admin-only type="button" id="open-category-modal">＋ Kategori Baru</button></div></div>
-          <div class="form-field"><label class="field-label" for="item-lab">Laboratorium</label><input class="input-control" id="item-lab" name="laboratorium" required maxlength="100" value="Fisika"></div>
+          <!-- // UPDATE BARANG: gunakan istilah Lokasi pada formulir dan tabel inventaris. -->
+          <div class="form-field"><label class="field-label" for="item-lab">Lokasi</label><input class="input-control" id="item-lab" name="laboratorium" required maxlength="100" value="Fisika"></div>
           <div class="form-field"><label class="field-label" for="item-stock">Stok</label><input class="input-control" id="item-stock" name="stok" type="number" min="0" value="0" required></div>
+          <!-- // UPDATE BARANG: satuan stok dapat diisi bebas saat membuat atau mengedit barang. -->
+          <div class="form-field"><label class="field-label" for="item-unit">Satuan</label><input class="input-control" id="item-unit" name="satuan" maxlength="50" value="unit" required placeholder="Contoh: unit, set, buah"></div>
           <div class="form-field"><label class="field-label" for="item-condition">Kondisi</label><select class="input-control" id="item-condition" name="kondisi"><option>Baik</option><option>Perawatan</option><option>Rusak</option></select></div>
           <div class="form-field"><label class="field-label" for="item-year">Tahun Pengadaan</label><input class="input-control" id="item-year" name="tahun_pengadaan" type="number" min="1" max="9999" step="1" placeholder="Opsional"></div>
         </div><div class="mt-5 flex justify-end"><button class="btn btn-primary" id="item-submit" type="submit">Simpan Barang</button></div></form>
@@ -27,7 +30,8 @@
           <div class="filter-field"><label class="field-label" for="category-filter">Kategori</label><select class="input-control" id="category-filter"><option value="">Semua kategori</option></select></div>
           <div class="text-xs text-[#728078]" id="item-count"></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Laboratorium</th><th>Stok</th><th>Kondisi</th><th>Tahun</th><th id="items-actions-heading">Aksi</th></tr></thead><tbody id="items-body"><tr><td colspan="8"><div class="empty-state">Memuat inventaris…</div></td></tr></tbody></table></div>
+        <!-- // UPDATE BARANG: kolom Satuan berada setelah Stok dan header lokasi menggantikan laboratorium. -->
+        <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Stok</th><th>Satuan</th><th>Kondisi</th><th>Tahun</th><th id="items-actions-heading">Aksi</th></tr></thead><tbody id="items-body"><tr><td colspan="9"><div class="empty-state">Memuat inventaris…</div></td></tr></tbody></table></div>
       </section>
       <section class="panel mt-5">
         <div class="panel-heading"><div><div class="panel-title">Daftar Kategori</div><div class="panel-note mt-1">Kategori inventaris laboratorium</div></div></div>

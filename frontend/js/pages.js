@@ -5,6 +5,7 @@
   let editingItemId = null;
   let editingUserId = null;
   let editingCategoryId = null;
+  const selectedUserIds = new Set();
   let itemCategories = [];
   let loanRequestForm = null;
   let itemLoanRequestForm = null;
@@ -46,6 +47,21 @@
         if (labels[index]) cell.dataset.label = labels[index];
       });
     });
+  };
+  // BULK DELETE: sinkronkan pilihan yang terlihat dengan kontrol hapus.
+  const syncUserSelectionControls = () => {
+    const body = document.getElementById("users-body");
+    const selectAll = document.getElementById("user-select-all");
+    const deleteButton = document.getElementById("delete-selected-users");
+    if (!body || !selectAll || !deleteButton) return;
+    const visibleCheckboxes = [...body.querySelectorAll("[data-select-user]:not(:disabled)")];
+    const selectedVisibleCount = visibleCheckboxes.filter((checkbox) => checkbox.checked).length;
+    selectAll.checked = visibleCheckboxes.length > 0 && selectedVisibleCount === visibleCheckboxes.length;
+    selectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleCheckboxes.length;
+    deleteButton.disabled = selectedUserIds.size === 0;
+    deleteButton.textContent = selectedUserIds.size
+      ? `Hapus Pengguna Terpilih (${selectedUserIds.size})`
+      : "Hapus Pengguna Terpilih";
   };
 
   function setupLoanRequestForm(onSuccess) {
@@ -252,16 +268,21 @@
       const matchesText = !query || [user.nama_lengkap, user.username, user.email].some((value) => String(value).toLowerCase().includes(query));
       return matchesText && (!role || user.role === role) && (!status || user.status === status);
     });
+    const availableUserIds = new Set(users.map((user) => user.id));
+    selectedUserIds.forEach((userId) => {
+      if (!availableUserIds.has(userId)) selectedUserIds.delete(userId);
+    });
     document.getElementById("user-count").textContent = `${filtered.length} pengguna`;
     document.getElementById("users-body").innerHTML = filtered.length ? filtered.map((user) => `
-      <tr><td class="font-semibold">${user.id}</td><td class="font-semibold text-[#26372c]">${escapeHTML(user.nama_lengkap)}</td><td>${escapeHTML(user.role)}</td><td><div class="font-semibold">${escapeHTML(user.username)}</div><div class="mt-1 text-[11px] text-[#728078]">${escapeHTML(user.email)}</div></td><td><span class="text-[11px] tracking-widest text-[#76837a]" title="Password tidak dikirim oleh API">••••••••</span></td><td>${statusTag(user.status)}</td><td><div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-user="${user.id}" aria-label="Edit pengguna ${escapeHTML(user.nama_lengkap)}" title="Edit pengguna"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-user="${user.id}" aria-label="Hapus pengguna ${escapeHTML(user.nama_lengkap)}" title="Hapus pengguna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div></td></tr>
-    `).join("") : emptyRow(8, "Coba ubah filter atau kata pencarian.");
+      <tr><td><input class="user-select-control" type="checkbox" data-select-user="${user.id}" aria-label="Pilih ${escapeHTML(user.nama_lengkap)}" ${user.id === currentUserId() ? 'disabled title="Akun Admin yang sedang masuk tidak dapat dihapus"' : ""} ${selectedUserIds.has(user.id) ? "checked" : ""}></td><td class="font-semibold">${user.id}</td><td class="font-semibold text-[#26372c]">${escapeHTML(user.nama_lengkap)}</td><td>${escapeHTML(user.role)}</td><td><div class="font-semibold">${escapeHTML(user.username)}</div><div class="mt-1 text-[11px] text-[#728078]">${escapeHTML(user.email)}</div></td><td><span class="text-[11px] tracking-widest text-[#76837a]" title="Password tidak dikirim oleh API">••••••••</span></td><td>${statusTag(user.status)}</td><td><div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-user="${user.id}" aria-label="Edit pengguna ${escapeHTML(user.nama_lengkap)}" title="Edit pengguna"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-user="${user.id}" aria-label="Hapus pengguna ${escapeHTML(user.nama_lengkap)}" title="Hapus pengguna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div></td></tr>
+    `).join("") : emptyRow(9, "Coba ubah filter atau kata pencarian."); // BULK DELETE: checkbox menambah kolom pertama tabel.
     if (filtered.length) {
       document.querySelectorAll("#users-body tr").forEach((row, index) => {
-        row.insertCell(3).textContent = filtered[index].tipe_user || "—";
+        row.insertCell(4).textContent = filtered[index].tipe_user || "—"; // BULK DELETE: sesuaikan posisi kolom Tipe pengguna.
       });
     }
     addMobileCardLabels(document.getElementById("users-body"));
+    syncUserSelectionControls();
   }
 
   async function loadItems(selectedCategoryId = null) {
@@ -298,11 +319,12 @@
     });
     document.getElementById("item-count").textContent = `${filtered.length} barang`;
     itemLoanRequestForm?.setItems(items); // AUDIT FIX: dropdown modal tetap dimuat dari inventaris.
+    // UPDATE BARANG: tampilkan satuan dan lokasi pada tabel admin maupun user.
     document.getElementById("items-body").innerHTML = filtered.length ? filtered.map((item) => `
-      <tr><td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
+      <tr><td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${escapeHTML(item.satuan || "unit")}</td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
         <div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-item="${item.id}" aria-label="Edit ${escapeHTML(item.nama_barang)}" title="Edit barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-item="${item.id}" aria-label="Hapus ${escapeHTML(item.nama_barang)}" title="Hapus barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
       ` : `<button class="btn btn-primary item-borrow-button" type="button" data-borrow-item="${item.id}" ${item.stok < 1 ? 'disabled title="Stok habis"' : `aria-label="Pinjam ${escapeHTML(item.nama_barang)}"`}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>Pinjam</button>`}</td></tr>
-      `).join("") : emptyRow(8, "Belum ada barang yang sesuai dengan pencarian.");
+      `).join("") : emptyRow(9, "Belum ada barang yang sesuai dengan pencarian."); // UPDATE BARANG: jumlah kolom tabel menjadi sembilan.
     addMobileCardLabels(document.getElementById("items-body"));
   }
 
@@ -313,7 +335,7 @@
       const itemsBody = document.getElementById("items-body");
       if (itemsBody) {
         itemsBody.innerHTML = emptyRow(
-          8,
+          9, // UPDATE BARANG: samakan colspan keadaan gagal dengan sembilan kolom tabel.
           "Periksa koneksi dan akses akun, lalu coba muat ulang halaman.",
           "Inventaris gagal dimuat",
         );
@@ -558,6 +580,64 @@
       document.getElementById("user-search").addEventListener("input", () => loadUsers().catch(showFailure));
       document.getElementById("user-role-filter").addEventListener("change", () => loadUsers().catch(showFailure));
       document.getElementById("user-status-filter").addEventListener("change", () => loadUsers().catch(showFailure));
+      const usersBody = document.getElementById("users-body");
+      // BULK DELETE: pilihan header hanya mengubah baris yang sedang tampil.
+      document.getElementById("user-select-all").addEventListener("change", (event) => {
+        const checked = event.currentTarget.checked;
+        usersBody.querySelectorAll("[data-select-user]:not(:disabled)").forEach((checkbox) => {
+          const userId = Number(checkbox.dataset.selectUser);
+          checkbox.checked = checked;
+          if (checked) selectedUserIds.add(userId);
+          else selectedUserIds.delete(userId);
+        });
+        syncUserSelectionControls();
+      });
+      usersBody.addEventListener("change", (event) => {
+        const checkbox = event.target.closest("[data-select-user]");
+        if (!checkbox) return;
+        const userId = Number(checkbox.dataset.selectUser);
+        if (checkbox.checked) selectedUserIds.add(userId);
+        else selectedUserIds.delete(userId);
+        syncUserSelectionControls();
+      });
+      // BULK DELETE: konfirmasi dan hapus semua ID terpilih melalui endpoint Admin.
+      document.getElementById("delete-selected-users").addEventListener("click", async (event) => {
+        if (api.getUser()?.role?.toLowerCase() !== "admin" || !selectedUserIds.size) return;
+        const userIds = [...selectedUserIds];
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus ${userIds.length} pengguna?`)) return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const result = await apiFetch("/users/bulk", {
+            method: "DELETE",
+            body: { user_ids: userIds },
+          });
+          selectedUserIds.clear();
+          await loadUsers();
+          window.showToast(`${result.deleted_count} pengguna berhasil dihapus.`);
+        } catch (error) {
+          showFailure(error);
+          syncUserSelectionControls();
+        }
+      });
+      document.getElementById("download-users-excel").addEventListener("click", async (event) => {
+        if (api.getUser()?.role?.toLowerCase() !== "admin") return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const blob = await apiFetch("/users/export/excel", { responseType: "blob" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "data-pengguna.xlsx";
+          document.body.append(link);
+          link.click();
+          link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          window.showToast("Data pengguna berhasil diunduh.");
+        } catch (error) { showFailure(error); }
+        finally { button.disabled = false; }
+      });
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const wasEditing = editingUserId !== null;
@@ -796,6 +876,7 @@
             document.getElementById("item-category").value = String(item.kategori_id);
             document.getElementById("item-lab").value = item.laboratorium;
             document.getElementById("item-stock").value = item.stok;
+            document.getElementById("item-unit").value = item.satuan || "unit"; // UPDATE BARANG: isi kembali satuan saat edit.
             document.getElementById("item-condition").value = item.kondisi;
             document.getElementById("item-year").value = item.tahun_pengadaan ?? "";
             document.getElementById("item-form-title").textContent = "Edit Barang";

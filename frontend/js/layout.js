@@ -25,6 +25,8 @@
     ["reports", "Laporan", "reports.html", "reports"],
     ["notifications", "Notifikasi", "notifications.html", "notifications"],
   ];
+  let pendingCountTimer = null;
+  let pendingCountErrorShown = false;
   const active = document.body.dataset.page;
   const current = pages.find((entry) => entry[0] === active) || pages[0];
   const sidebar = document.getElementById("sidebar");
@@ -73,7 +75,9 @@
 
   function renderLayout(user) {
     const isAdmin = user?.role?.toLowerCase() === "admin";
-    const visiblePages = isAdmin ? pages : pages.filter(([key]) => !["users", "reports", "activity"].includes(key));
+    const visiblePages = isAdmin
+      ? pages.filter(([key]) => key !== "notifications") // BADGE NOTIF: menu Notifikasi tidak ditampilkan ke Admin.
+      : pages.filter(([key]) => !["users", "reports", "activity"].includes(key));
     const currentTitle = active === "profile" ? "Profil" : current[1];
     sidebar.innerHTML = `
       <!-- Logo lokal: simpan gambar di frontend/assets/FSM_UKSW.png. -->
@@ -91,7 +95,7 @@
       </a>
       <div class="side-caption">Menu Utama</div>
       <nav class="side-nav" aria-label="Navigasi utama">${visiblePages.map(([key, label, href, icon]) => `
-        <a class="side-link ${key === active ? "active" : ""}" href="${href}" ${key === active ? 'aria-current="page"' : ""}>${icons[icon]}<span>${label}</span></a>
+        <a class="side-link ${key === active ? "active" : ""}" href="${href}" ${key === active ? 'aria-current="page"' : ""}>${icons[icon]}<span>${label}</span>${isAdmin && key === "loans" ? '<span class="side-pending-badge" data-pending-loan-count aria-label="Pengajuan menunggu" hidden>0</span>' : ""}</a>
       `).join("")}</nav>
       <div class="sidebar-foot">
         <a class="profile-link" href="profile.html"><span class="avatar" data-avatar>A</span><span class="profile-meta"><span class="profile-name block" data-sidebar-name>Pengguna</span><span class="profile-role block" data-sidebar-role>Laboratorium Fisika</span></span>${icons.profile}</a>
@@ -157,6 +161,35 @@
     });
     updateThemeToggle();
     setSidebarOpen(false);
+    // BADGE NOTIF: Admin menerima jumlah status Menunggu saat layout dirender dan setiap 30 detik.
+    if (pendingCountTimer !== null) {
+      window.clearInterval(pendingCountTimer);
+      pendingCountTimer = null;
+    }
+    if (isAdmin) {
+      const badge = sidebar.querySelector("[data-pending-loan-count]");
+      const refreshPendingLoanCount = async () => {
+        try {
+          const result = await api.apiFetch("/peminjaman/count-pending");
+          const count = Number(result.count);
+          if (!Number.isSafeInteger(count) || count < 0) {
+            throw new Error("Jumlah pengajuan menunggu tidak valid.");
+          }
+          badge.textContent = String(count);
+          badge.hidden = false; // BADGE NOTIF: tampilkan juga angka 0 agar badge selalu menunjukkan jumlah.
+          badge.setAttribute("aria-label", `${count} pengajuan menunggu`);
+          pendingCountErrorShown = false;
+        } catch (error) {
+          badge.hidden = true;
+          if (!pendingCountErrorShown) {
+            window.showToast(error.message || "Jumlah pengajuan menunggu gagal dimuat.", "error");
+            pendingCountErrorShown = true;
+          }
+        }
+      };
+      refreshPendingLoanCount();
+      pendingCountTimer = window.setInterval(refreshPendingLoanCount, 30_000);
+    }
 
     if (user?.role && !isAdmin && ["users", "reports", "activity"].includes(active)) {
       location.replace("dashboard.html");

@@ -398,11 +398,21 @@ def migrate_legacy_schema() -> None:
 
     if "barang" in table_names:
         barang_columns = {column["name"] for column in inspector.get_columns("barang")}
-        if "tahun_pengadaan" not in barang_columns:
+        new_barang_columns = {  # UPDATE BARANG: tambahkan kolom untuk skema barang lama secara aditif.
+            "tahun_pengadaan": "INTEGER",
+            "satuan": "VARCHAR(50) NOT NULL DEFAULT 'unit'",
+        }
+        missing_barang_columns = {
+            column: definition
+            for column, definition in new_barang_columns.items()
+            if column not in barang_columns
+        }
+        if missing_barang_columns:
             with engine.begin() as connection:
-                connection.execute(
-                    text("ALTER TABLE barang ADD COLUMN tahun_pengadaan INTEGER")
-                )
+                for column, definition in missing_barang_columns.items():
+                    connection.execute(
+                        text(f"ALTER TABLE barang ADD COLUMN {column} {definition}")
+                    )
 
     if "log_aktivitas" not in table_names:
         return

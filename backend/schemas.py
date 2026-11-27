@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    model_validator,
+)
 
 
 class ORMModel(BaseModel):
@@ -87,6 +94,16 @@ class UserUpdate(BaseModel):
     status: Literal["Aktif", "Pending"] | None = None
 
 
+class UserBulkDeleteRequest(BaseModel):  # BULK DELETE: request berisi ID pengguna unik yang akan dihapus.
+    user_ids: list[PositiveInt] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_user_ids(self):
+        if len(self.user_ids) != len(set(self.user_ids)):
+            raise ValueError("ID pengguna tidak boleh duplikat")
+        return self
+
+
 class UserResponse(ORMModel):
     id: int
     username: str
@@ -121,6 +138,7 @@ class BarangCreate(BaseModel):
     kategori_id: int = Field(gt=0)
     laboratorium: str = Field(min_length=1, max_length=100)
     stok: int = Field(default=0, ge=0)
+    satuan: str = Field(default="unit", min_length=1, max_length=50)  # UPDATE BARANG: satuan teks bebas dengan default kompatibel.
     kondisi: str = Field(default="Baik", max_length=50)
     tahun_pengadaan: int | None = Field(default=None, ge=1, le=9999)
 
@@ -131,6 +149,7 @@ class BarangUpdate(BaseModel):
     kategori_id: int | None = Field(default=None, gt=0)
     laboratorium: str | None = Field(default=None, min_length=1, max_length=100)
     stok: int | None = Field(default=None, ge=0)
+    satuan: str | None = Field(default=None, min_length=1, max_length=50)  # UPDATE BARANG: satuan dapat diedit.
     kondisi: str | None = Field(default=None, max_length=50)
     tahun_pengadaan: int | None = Field(default=None, ge=1, le=9999)
 
@@ -142,6 +161,7 @@ class BarangResponse(ORMModel):
     kategori_id: int
     laboratorium: str
     stok: int
+    satuan: str  # UPDATE BARANG: sertakan satuan pada respons inventaris.
     kondisi: str
     tahun_pengadaan: int | None
 

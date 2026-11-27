@@ -87,6 +87,20 @@ def list_peminjaman(
     return query.order_by(Peminjaman.tanggal_pinjam.desc(), Peminjaman.id.desc()).all()
 
 
+@router.get("/count-pending")  # BADGE NOTIF: endpoint hitung pengajuan berstatus Menunggu.
+def count_pending_peminjaman(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+) -> dict[str, int]:
+    # BADGE NOTIF: hanya Admin yang dapat melihat jumlah pengajuan menunggu.
+    count = (
+        db.query(Peminjaman.id)
+        .filter(Peminjaman.status == "Menunggu")
+        .count()
+    )
+    return {"count": count}
+
+
 @router.get("/{peminjaman_id}", response_model=PeminjamanResponse)
 def get_peminjaman(
     peminjaman_id: int,

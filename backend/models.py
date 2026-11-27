@@ -93,6 +93,9 @@ class Barang(Base):
     kategori_id: Mapped[int] = mapped_column(ForeignKey("kategori_barang.id"))
     laboratorium: Mapped[str] = mapped_column(String(100))
     stok: Mapped[int] = mapped_column(Integer, default=0)
+    satuan: Mapped[str] = mapped_column(  # UPDATE BARANG: simpan satuan stok sebagai teks.
+        String(50), default="unit", server_default="unit"
+    )
     kondisi: Mapped[str] = mapped_column(String(50), default="Baik")
     tahun_pengadaan: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
