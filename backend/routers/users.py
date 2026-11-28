@@ -42,9 +42,7 @@ def _ensure_user_deletable(db: Session, user: User, admin: User) -> None:
         )
     if (
         user.role.casefold() == "admin"
-        and db.query(LogAktivitas.id)
-        .filter(LogAktivitas.admin_id == user.id)
-        .first()
+        and db.query(LogAktivitas.id).filter(LogAktivitas.admin_id == user.id).first()
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -106,7 +104,9 @@ def bulk_delete_users(
         )
 
     for user in users:
-        _ensure_user_deletable(db, user, admin)  # BULK DELETE: pertahankan batasan hapus yang sama.
+        _ensure_user_deletable(
+            db, user, admin
+        )  # BULK DELETE: pertahankan batasan hapus yang sama.
 
     log_aktivitas(
         db,
@@ -295,13 +295,14 @@ def update_user(
     for field, value in changes.items():
         if value is not None or field == "tipe_user":
             setattr(user, field, value)
-    status_verified = (
-        changed_values.get("status") == ("Pending", "Aktif")
+    status_verified = changed_values.get("status") == ("Pending", "Aktif")
+    detail = (
+        "; ".join(
+            f"{field}: {old_value} → {new_value}"
+            for field, (old_value, new_value) in changed_values.items()
+        )
+        or "Tidak ada perubahan."
     )
-    detail = "; ".join(
-        f"{field}: {old_value} → {new_value}"
-        for field, (old_value, new_value) in changed_values.items()
-    ) or "Tidak ada perubahan."
     log_aktivitas(
         db,
         admin,
