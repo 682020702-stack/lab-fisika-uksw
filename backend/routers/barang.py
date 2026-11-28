@@ -224,7 +224,7 @@ def upload_barang_excel(
     request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user),
-) -> dict[str, int | str | list[dict[str, int | str]]]:
+) -> dict[str, object]:
     if not file.filename or Path(file.filename).suffix.lower() != ".xlsx":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -280,9 +280,18 @@ def upload_barang_excel(
         )
 
     dataframe = dataframe.rename(columns=header_mapping)
-    seen_codes: set[str] = set()
-    berhasil = 0
+    # VALIDASI UPLOAD: nama barang yang ada di database menjadi acuan deteksi duplikat case-insensitive.
+    seen_names = {
+        nama.strip().casefold() for (nama,) in db.query(Barang.nama_barang).all()
+    }
+    seen_codes = {kode for (kode,) in db.query(Barang.kode_barang).all()}
+    prepared_rows: list[dict[str, object]] = []
     gagal: list[dict[str, str | int]] = []
+    category_by_name = {
+        category.nama_kategori.strip().casefold(): category
+        for category in db.query(KategoriBarang).all()
+    }
+
     for index, row in dataframe.iterrows():
         row_number = int(index) + 2
         values = {column: row.get(column) for column in EXCEL_COLUMNS}
@@ -318,10 +327,23 @@ def upload_barang_excel(
                     raise ValueError(
                         f"kolom {column} wajib diisi dan maksimal {maximum} karakter"
                     )
+
+            # VALIDASI UPLOAD: tandai nama database/file sebagai duplikat sebelum menyimpan baris.
+            item_name = text_values["nama_barang"]
+            normalized_name = item_name.casefold()
+            if normalized_name in seen_names:
+                gagal.append(
+                    {
+                        "baris": row_number,
+                        "nama_barang": item_name,
+                        "alasan": "nama barang sudah ada (duplikat)",
+                    }
+                )
+                continue
+            seen_names.add(normalized_name)
+
             code = text_values["kode_barang"]
-            if code in seen_codes or db.query(Barang.id).filter(
-                Barang.kode_barang == code
-            ).first():
+            if code in seen_codes:
                 raise ValueError(f"kode_barang {code} sudah digunakan")
             stock = _cell_integer(values["stok"], "stok", row_number)
             year = _cell_integer(
@@ -331,69 +353,106 @@ def upload_barang_excel(
                 optional=True,
             )
 
-            category = (
-                db.query(KategoriBarang)
-                .filter(KategoriBarang.nama_kategori.ilike(text_values["kategori"]))
-                .first()
+            prepared_rows.append(
+                {
+                    "baris": row_number,
+                    "kode_barang": code,
+                    "nama_barang": item_name,
+                    "kategori": text_values["kategori"],
+                    "laboratorium": text_values["laboratorium"],
+                    "stok": stock,
+                    "satuan": text_values["satuan"],
+                    "kondisi": _normalize_condition(_cell_text(values["kondisi"])),
+                    "tahun_pengadaan": year,
+                }
             )
-            if category is None:
-                category = KategoriBarang(nama_kategori=text_values["kategori"])
-                db.add(category)
-                db.flush()
-
-            db.add(
-                Barang(
-                    kode_barang=code,
-                    nama_barang=text_values["nama_barang"],
-                    kategori_id=category.id,
-                    laboratorium=text_values["laboratorium"],
-                    stok=stock,
-                    satuan=text_values["satuan"],  # UPDATE BARANG: pertahankan satuan dari Excel.
-                    kondisi=_normalize_condition(_cell_text(values["kondisi"])),
-                    tahun_pengadaan=year,
-                )
-            )
-            db.commit()
             seen_codes.add(code)
-            berhasil += 1
         except (ValueError, HTTPException) as exc:
-            db.rollback()
             detail = exc.detail if isinstance(exc, HTTPException) else str(exc)
             row_prefix = f"Baris {row_number}: "
             if isinstance(detail, str) and detail.startswith(row_prefix):
                 detail = detail[len(row_prefix):]
             gagal.append({"baris": row_number, "alasan": str(detail)})
-        except IntegrityError:
-            db.rollback()
-            gagal.append(
-                {
-                    "baris": row_number,
-                    "alasan": "kode_barang atau kategori bertabrakan dengan data yang sudah ada",
-                }
-            )
 
-    if berhasil == 0 and not gagal:
+    if not prepared_rows and not gagal:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="File Excel tidak berisi baris barang yang valid.",
         )
 
-    if berhasil:
-        log_aktivitas(
-            db,
-            admin,
-            "Upload Excel",
-            "Barang",
-            None,
-            f"Berhasil mengimpor {berhasil} barang; {len(gagal)} baris gagal.",
-            request.client.host if request.client else None,
-        )
+    berhasil = 0
+    # VALIDASI UPLOAD: simpan seluruh baris valid dan log dalam satu transaksi atomik.
+    try:
+        for values in prepared_rows:
+            category_name = str(values["kategori"])
+            category_key = category_name.casefold()
+            category = category_by_name.get(category_key)
+            if category is None:
+                category = KategoriBarang(nama_kategori=category_name)
+                db.add(category)
+                db.flush()
+                category_by_name[category_key] = category
+
+            db.add(
+                Barang(
+                    kode_barang=str(values["kode_barang"]),
+                    nama_barang=str(values["nama_barang"]),
+                    kategori_id=category.id,
+                    laboratorium=str(values["laboratorium"]),
+                    stok=values["stok"],
+                    satuan=str(values["satuan"]),  # UPDATE BARANG: pertahankan satuan dari Excel.
+                    kondisi=str(values["kondisi"]),
+                    tahun_pengadaan=values["tahun_pengadaan"],
+                )
+            )
+            berhasil += 1
+
+        if berhasil:
+            log_aktivitas(
+                db,
+                admin,
+                "Upload Excel",
+                "Barang",
+                None,
+                f"Berhasil mengimpor {berhasil} barang; {len(gagal)} baris gagal.",
+                request.client.host if request.client else None,
+            )
         db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Impor dibatalkan karena kode barang atau kategori bertabrakan dengan data yang ada.",
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+    duplicate_failures = [
+        item
+        for item in gagal
+        if item.get("alasan") == "nama barang sudah ada (duplikat)"
+    ]
+    nama_duplikat = list(
+        dict.fromkeys(
+            str(item["nama_barang"])
+            for item in duplicate_failures
+        )
+    )
+    message = (
+        f"Berhasil mengimpor {berhasil} barang. Gagal mengimpor "
+        f"{len(duplicate_failures)} "
+        "barang karena duplikat "
+        f"(daftar nama barang: {', '.join(nama_duplikat) if nama_duplikat else 'tidak ada'})."
+    )
+    if len(gagal) > len(duplicate_failures):
+        message += f" Total baris gagal: {len(gagal)}."
     return {
         "jumlah_berhasil": berhasil,
         "jumlah_gagal": len(gagal),
+        "nama_duplikat": nama_duplikat,
         "gagal": gagal,
-        "message": f"Berhasil mengunggah {berhasil} barang, {len(gagal)} gagal.",
+        "message": message,
     }
 
 
@@ -556,6 +615,54 @@ def bulk_delete_barang(
             detail="Barang terpilih memiliki data terkait dan tidak dapat dihapus",
         ) from exc
     return {"deleted_count": len(items)}
+
+
+# BERSIH DUPLIKAT: pertahankan barang dengan ID terkecil dan alihkan riwayatnya sebelum menghapus sisanya.
+@router.delete("/bersihkan-duplikat")
+def clean_duplicate_barang(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+) -> dict[str, int]:
+    items = db.query(Barang).order_by(Barang.id).all()
+    grouped_items: dict[str, list[Barang]] = {}
+    for item in items:
+        normalized_name = item.nama_barang.strip().casefold()
+        grouped_items.setdefault(normalized_name, []).append(item)
+
+    duplicate_groups = [
+        group for group in grouped_items.values() if len(group) > 1
+    ]
+    deleted_count = sum(len(group) - 1 for group in duplicate_groups)
+    for group in duplicate_groups:
+        keeper = group[0]
+        for duplicate in group[1:]:
+            db.query(DetailPeminjaman).filter(
+                DetailPeminjaman.barang_id == duplicate.id
+            ).update(
+                {DetailPeminjaman.barang_id: keeper.id},
+                synchronize_session=False,
+            )
+            db.delete(duplicate)
+
+    log_aktivitas(
+        db,
+        admin,
+        "Bersihkan Duplikat Barang",
+        "Barang",
+        None,
+        f"Barang duplikat yang dihapus: {deleted_count}.",
+        request.client.host if request.client else None,
+    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pembersihan dibatalkan karena barang duplikat memiliki relasi data yang tidak dapat dipindahkan.",
+        ) from exc
+    return {"deleted_count": deleted_count}
 
 
 @router.delete("/{barang_id}", status_code=status.HTTP_204_NO_CONTENT)
