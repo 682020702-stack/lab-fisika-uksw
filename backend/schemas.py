@@ -154,6 +154,16 @@ class BarangUpdate(BaseModel):
     tahun_pengadaan: int | None = Field(default=None, ge=1, le=9999)
 
 
+class BarangBulkDeleteRequest(BaseModel):  # BULK BARANG: validasi daftar ID unik untuk penghapusan massal.
+    barang_ids: list[PositiveInt] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_barang_ids(self):
+        if len(self.barang_ids) != len(set(self.barang_ids)):
+            raise ValueError("ID barang tidak boleh duplikat")
+        return self
+
+
 class BarangResponse(ORMModel):
     id: int
     kode_barang: str

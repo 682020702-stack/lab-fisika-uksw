@@ -24,7 +24,12 @@ from sqlalchemy.orm import Session, joinedload
 from backend.auth import get_admin_user, get_current_user
 from backend.database import get_db
 from backend.models import Barang, DetailPeminjaman, KategoriBarang, User
-from backend.schemas import BarangCreate, BarangResponse, BarangUpdate
+from backend.schemas import (
+    BarangBulkDeleteRequest,
+    BarangCreate,
+    BarangResponse,
+    BarangUpdate,
+)
 from backend.utils import log_aktivitas
 
 router = APIRouter(prefix="/barang", tags=["Barang"])
@@ -495,6 +500,62 @@ def update_barang(
         ) from exc
     db.refresh(barang)
     return barang
+
+
+# BULK BARANG: penghapusan massal Admin berjalan atomik dan mempertahankan batasan riwayat.
+@router.delete("/bulk")
+def bulk_delete_barang(
+    payload: BarangBulkDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+) -> dict[str, int]:
+    barang_ids = payload.barang_ids
+    items = db.query(Barang).filter(Barang.id.in_(barang_ids)).all()
+    found_ids = {item.id for item in items}
+    missing_ids = sorted(set(barang_ids) - found_ids)
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Barang tidak ditemukan: {', '.join(map(str, missing_ids))}",
+        )
+
+    blocked_ids = sorted(
+        barang_id
+        for (barang_id,) in db.query(DetailPeminjaman.barang_id)
+        .filter(DetailPeminjaman.barang_id.in_(barang_ids))
+        .distinct()
+        .all()
+    )
+    if blocked_ids:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Barang dengan riwayat peminjaman tidak dapat dihapus: "
+                f"{', '.join(map(str, blocked_ids))}"
+            ),
+        )
+
+    log_aktivitas(
+        db,
+        admin,
+        "Hapus Barang Massal",
+        "Barang",
+        f"{len(items)} barang",
+        f"ID barang: {', '.join(map(str, sorted(barang_ids)))}",
+        request.client.host if request.client else None,
+    )
+    try:
+        for item in items:
+            db.delete(item)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Barang terpilih memiliki data terkait dan tidak dapat dihapus",
+        ) from exc
+    return {"deleted_count": len(items)}
 
 
 @router.delete("/{barang_id}", status_code=status.HTTP_204_NO_CONTENT)

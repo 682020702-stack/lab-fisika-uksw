@@ -30,8 +30,12 @@
           <div class="filter-field"><label class="field-label" for="category-filter">Kategori</label><select class="input-control" id="category-filter"><option value="">Semua kategori</option></select></div>
           <div class="text-xs text-[#728078]" id="item-count"></div>
         </div>
+        <!-- // BULK BARANG: aksi massal hanya tampil untuk Admin. -->
+        <div class="mb-3 flex justify-end">
+          <button class="btn btn-danger hidden" id="delete-selected-items" data-admin-only type="button" disabled>Hapus Terpilih</button>
+        </div>
         <!-- // UPDATE BARANG: kolom Satuan berada setelah Stok dan header lokasi menggantikan laboratorium. -->
-        <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Stok</th><th>Satuan</th><th>Kondisi</th><th>Tahun</th><th id="items-actions-heading">Aksi</th></tr></thead><tbody id="items-body"><tr><td colspan="9"><div class="empty-state">Memuat inventaris…</div></td></tr></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th class="hidden" data-admin-only><label><input id="item-select-all" type="checkbox" aria-label="Pilih semua barang"> Pilih Semua</label></th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Stok</th><th>Satuan</th><th>Kondisi</th><th>Tahun</th><th id="items-actions-heading">Aksi</th></tr></thead><tbody id="items-body"><tr><td colspan="10"><div class="empty-state">Memuat inventaris…</div></td></tr></tbody></table></div>
       </section>
       <section class="panel mt-5">
         <div class="panel-heading"><div><div class="panel-title">Daftar Kategori</div><div class="panel-note mt-1">Kategori inventaris laboratorium</div></div></div>

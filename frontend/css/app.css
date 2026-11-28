@@ -70,7 +70,7 @@ button { cursor: pointer; }
 .side-pending-badge { display: grid; min-width: 20px; height: 20px; margin-left: auto; padding: 0 5px; place-items: center; border-radius: 999px; background: #d94841; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
 .side-pending-badge[hidden] { display: none; }
 .user-select-all-label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
-.user-select-control { width: 16px; height: 16px; accent-color: var(--forest); vertical-align: middle; }
+.user-select-control, .item-select-control { width: 16px; height: 16px; accent-color: var(--forest); vertical-align: middle; } /* BULK BARANG: samakan tampilan checkbox barang dengan pengguna. */
 .sidebar-foot { margin-top: auto; padding: 14px 12px 20px; border-top: 1px solid rgba(255,255,255,.12); }
 .profile-link { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; }
 .avatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 50%; background: #d9e8c5; color: var(--forest); font-size: 12px; font-weight: 700; }

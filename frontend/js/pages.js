@@ -6,6 +6,7 @@
   let editingUserId = null;
   let editingCategoryId = null;
   const selectedUserIds = new Set();
+  const selectedItemIds = new Set(); // BULK BARANG: simpan seleksi barang saat filter berubah.
   let itemCategories = [];
   let loanRequestForm = null;
   let itemLoanRequestForm = null;
@@ -37,7 +38,9 @@
   const formValues = (form) => Object.fromEntries(new FormData(form).entries());
   const emptyRow = (columnCount, message, title = "Belum ada data") => `<tr><td colspan="${columnCount}"><div class="empty-state"><strong>${escapeHTML(title)}</strong>${escapeHTML(message)}</div></td></tr>`;
   const addMobileCardLabels = (tbody) => {
-    const labels = [...tbody.closest("table").querySelectorAll("thead th")].map((cell) => cell.textContent.trim());
+    const labels = [...tbody.closest("table").querySelectorAll("thead th")]
+      .filter((cell) => !cell.classList.contains("hidden")) // BULK BARANG: abaikan header checkbox pada tabel User.
+      .map((cell) => cell.textContent.trim());
     [...tbody.rows].forEach((row) => {
       if (row.cells.length === 1 && row.cells[0].hasAttribute("colspan")) {
         row.classList.add("table-empty-row");
@@ -62,6 +65,21 @@
     deleteButton.textContent = selectedUserIds.size
       ? `Hapus Pengguna Terpilih (${selectedUserIds.size})`
       : "Hapus Pengguna Terpilih";
+  };
+  // BULK BARANG: sinkronkan checkbox yang terlihat dan tombol hapus massal.
+  const syncItemSelectionControls = () => {
+    const body = document.getElementById("items-body");
+    const selectAll = document.getElementById("item-select-all");
+    const deleteButton = document.getElementById("delete-selected-items");
+    if (!body || !selectAll || !deleteButton) return;
+    const visibleCheckboxes = [...body.querySelectorAll("[data-select-item]")];
+    const selectedVisibleCount = visibleCheckboxes.filter((checkbox) => checkbox.checked).length;
+    selectAll.checked = visibleCheckboxes.length > 0 && selectedVisibleCount === visibleCheckboxes.length;
+    selectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleCheckboxes.length;
+    deleteButton.disabled = selectedItemIds.size === 0;
+    deleteButton.textContent = selectedItemIds.size
+      ? `Hapus Terpilih (${selectedItemIds.size})`
+      : "Hapus Terpilih";
   };
 
   function setupLoanRequestForm(onSuccess) {
@@ -317,15 +335,20 @@
       const matchesText = !query || `${item.kode_barang} ${item.nama_barang}`.toLowerCase().includes(query);
       return matchesText && (!categoryId || String(item.kategori_id) === categoryId);
     });
+    const availableItemIds = new Set(items.map((item) => item.id));
+    selectedItemIds.forEach((itemId) => {
+      if (!availableItemIds.has(itemId)) selectedItemIds.delete(itemId);
+    }); // BULK BARANG: bersihkan pilihan barang yang sudah tidak ada.
     document.getElementById("item-count").textContent = `${filtered.length} barang`;
     itemLoanRequestForm?.setItems(items); // AUDIT FIX: dropdown modal tetap dimuat dari inventaris.
     // UPDATE BARANG: tampilkan satuan dan lokasi pada tabel admin maupun user.
     document.getElementById("items-body").innerHTML = filtered.length ? filtered.map((item) => `
-      <tr><td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${escapeHTML(item.satuan || "unit")}</td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
+      <tr>${isAdmin ? `<td><input class="item-select-control" type="checkbox" data-select-item="${item.id}" aria-label="Pilih ${escapeHTML(item.nama_barang)}" ${selectedItemIds.has(item.id) ? "checked" : ""}></td>` : ""}<td class="font-semibold">${escapeHTML(item.kode_barang)}</td><td class="font-semibold text-[#26372c]">${escapeHTML(item.nama_barang)}</td><td>${escapeHTML(categoryNames.get(item.kategori_id) || `Kategori #${item.kategori_id}`)}</td><td>${escapeHTML(item.laboratorium)}</td><td><span class="font-display text-sm font-extrabold">${item.stok}</span></td><td>${escapeHTML(item.satuan || "unit")}</td><td>${statusTag(item.kondisi)}</td><td>${item.tahun_pengadaan ?? "—"}</td><td>${isAdmin ? `
         <div class="flex gap-1.5"><button class="btn-icon btn-icon-edit" type="button" data-edit-item="${item.id}" aria-label="Edit ${escapeHTML(item.nama_barang)}" title="Edit barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="btn-icon" type="button" data-delete-item="${item.id}" aria-label="Hapus ${escapeHTML(item.nama_barang)}" title="Hapus barang"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
       ` : `<button class="btn btn-primary item-borrow-button" type="button" data-borrow-item="${item.id}" ${item.stok < 1 ? 'disabled title="Stok habis"' : `aria-label="Pinjam ${escapeHTML(item.nama_barang)}"`}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>Pinjam</button>`}</td></tr>
-      `).join("") : emptyRow(9, "Belum ada barang yang sesuai dengan pencarian."); // UPDATE BARANG: jumlah kolom tabel menjadi sembilan.
+      `).join("") : emptyRow(isAdmin ? 10 : 9, "Belum ada barang yang sesuai dengan pencarian."); // BULK BARANG: kolom checkbox khusus Admin menambah satu kolom.
     addMobileCardLabels(document.getElementById("items-body"));
+    syncItemSelectionControls(); // BULK BARANG: perbarui status pilih semua setelah tabel dirender.
   }
 
   async function loadItemsSafely(selectedCategoryId = null) {
@@ -335,7 +358,7 @@
       const itemsBody = document.getElementById("items-body");
       if (itemsBody) {
         itemsBody.innerHTML = emptyRow(
-          9, // UPDATE BARANG: samakan colspan keadaan gagal dengan sembilan kolom tabel.
+          api.getUser()?.role?.toLowerCase() === "admin" ? 10 : 9, // BULK BARANG: sesuaikan kolom pesan gagal dengan role.
           "Periksa koneksi dan akses akun, lalu coba muat ulang halaman.",
           "Inventaris gagal dimuat",
         );
@@ -725,6 +748,48 @@
       if (location.hash === "#new-item" && api.getUser()?.role?.toLowerCase() === "admin") { panel.classList.remove("hidden"); panel.scrollIntoView({ behavior: "smooth" }); }
       document.getElementById("item-search").addEventListener("input", () => loadItemsSafely().catch(showFailure));
       document.getElementById("category-filter").addEventListener("change", () => loadItemsSafely().catch(showFailure));
+      const itemsBody = document.getElementById("items-body");
+      // BULK BARANG: pilih semua hanya berlaku untuk baris yang sedang terlihat.
+      document.getElementById("item-select-all").addEventListener("change", (event) => {
+        if (api.getUser()?.role?.toLowerCase() !== "admin") return;
+        const checked = event.currentTarget.checked;
+        itemsBody.querySelectorAll("[data-select-item]").forEach((checkbox) => {
+          const itemId = Number(checkbox.dataset.selectItem);
+          checkbox.checked = checked;
+          if (checked) selectedItemIds.add(itemId);
+          else selectedItemIds.delete(itemId);
+        });
+        syncItemSelectionControls();
+      });
+      itemsBody.addEventListener("change", (event) => {
+        if (api.getUser()?.role?.toLowerCase() !== "admin") return;
+        const checkbox = event.target.closest("[data-select-item]");
+        if (!checkbox) return;
+        const itemId = Number(checkbox.dataset.selectItem);
+        if (checkbox.checked) selectedItemIds.add(itemId);
+        else selectedItemIds.delete(itemId);
+        syncItemSelectionControls();
+      });
+      // BULK BARANG: konfirmasi sebelum Admin menghapus ID terpilih.
+      document.getElementById("delete-selected-items").addEventListener("click", async (event) => {
+        if (api.getUser()?.role?.toLowerCase() !== "admin" || !selectedItemIds.size) return;
+        const itemIds = [...selectedItemIds];
+        if (!window.confirm(`Yakin ingin menghapus ${itemIds.length} barang terpilih? Barang dengan riwayat peminjaman tidak dapat dihapus.`)) return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const result = await apiFetch("/barang/bulk", {
+            method: "DELETE",
+            body: { barang_ids: itemIds },
+          });
+          selectedItemIds.clear();
+          await loadItemsSafely();
+          window.showToast(`${result.deleted_count} barang berhasil dihapus.`);
+        } catch (error) {
+          showFailure(error);
+          syncItemSelectionControls();
+        }
+      });
       uploadExcelButton.addEventListener("click", () => {
         if (api.getUser()?.role?.toLowerCase() === "admin") excelFileInput.click();
       });

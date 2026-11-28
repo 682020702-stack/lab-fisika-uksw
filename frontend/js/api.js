@@ -99,7 +99,7 @@
           : "Anda tidak memiliki izin untuk melakukan tindakan ini.";
       } else if (response.status === 404) {
         message = "Data yang diminta tidak ditemukan.";
-      } else if (response.status === 409 && path === "/users/bulk") { // BULK DELETE: tampilkan alasan aman dari penolakan bulk delete.
+      } else if (response.status === 409 && ["/users/bulk", "/barang/bulk"].includes(path)) { // BULK BARANG: tampilkan alasan aman dari kegagalan hapus massal.
         const errorBody = await response.json();
         if (typeof errorBody.detail === "string") message = errorBody.detail;
       } else if (response.status === 409 && options.method === "PUT" && /^\/barang\/\d+$/.test(path)) { // UPDATE BARANG: tampilkan pesan konflik kode yang spesifik.
